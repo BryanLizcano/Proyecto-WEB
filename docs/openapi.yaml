@@ -1,0 +1,1301 @@
+openapi: 3.0.3
+info:
+  title: API Tienda en Línea Modular
+  description: |
+    Especificación OpenAPI 3.0 para la API REST desacoplada de la Tienda en Línea Modular.
+    
+    ### Principios de Diseño
+    - **Solo JSON**: Todas las peticiones y respuestas utilizan `application/json` (excepto endpoints que retornen 204 No Content).
+    - **Desacoplamiento**: El frontend en Vue.js interactúa con esta API de forma totalmente agnóstica.
+    - **Seguridad**:
+      - Los endpoints administrativos requieren autenticación mediante cookie de sesión `httpOnly`, `Secure` y `SameSite` (`admin_session`).
+      - Todas las operaciones que muten datos (`POST`, `PUT`, `DELETE`, `PATCH`) exigen el encabezado `X-CSRF-Token` validado mediante el patrón Double Submit Cookie.
+    - **Control de Inventario**: La confirmación de pedidos (`POST /pedidos`) valida y descuenta existencias atómicamente y calcula el total en backend.
+  version: 1.0.0
+  contact:
+    name: Equipo de Desarrollo (Bryan Lizcano & Edward Marín)
+    email: dev@tiendamodular.local
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Servidor de desarrollo local (Node.js/Express)
+  - url: https://tienda-modular-backend.onrender.com/api/v1
+    description: Servidor de producción (Render PaaS)
+
+security: []
+
+paths:
+  # ==========================================================================
+  # AUTENTICACIÓN Y SEGURIDAD (ADMIN Y CSRF)
+  # ==========================================================================
+  /auth/csrf:
+    get:
+      tags:
+        - Autenticación y Seguridad
+      summary: Obtener token anti-CSRF
+      description: |
+        Genera un token CSRF y lo devuelve en el payload JSON, emitiendo adicionalmente una cookie de verificación.
+        El frontend debe invocar este endpoint al inicializarse y adjuntar el token en el encabezado `X-CSRF-Token`
+        para cualquier petición que modifique datos (POST, PUT, DELETE, PATCH).
+      responses:
+        '200':
+          description: Token CSRF generado exitosamente.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: XSRF-TOKEN=4a7f98b1e...; Path=/; SameSite=Lax
+              description: Cookie CSRF para validación por Double Submit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfResponse'
+              example:
+                csrfToken: "d3b07384d113edec49eaa6238ad5ff00"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/login:
+    post:
+      tags:
+        - Autenticación y Seguridad
+      summary: Iniciar sesión como administrador (RF-05)
+      description: |
+        Valida las credenciales de un administrador. Si son correctas, establece una cookie de sesión
+        `admin_session` con banderas `httpOnly`, `SameSite=Lax` y `Secure` (en producción).
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+            example:
+              email: "admin@tiendamodular.com"
+              password: "PasswordSeguro123!"
+      responses:
+        '200':
+          description: Inicio de sesión exitoso. Se establece la cookie de sesión.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: admin_session=s%3A...; Path=/; HttpOnly; SameSite=Lax; Secure
+              description: Cookie de sesión protegida para el administrador.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Admin'
+              example:
+                status: "success"
+                data:
+                  id_administrador: 1
+                  nombre: "Administrador General"
+                  email: "admin@tiendamodular.com"
+                  creado_en: "2026-09-30T12:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Credenciales inválidas (correo no encontrado o contraseña errónea).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                code: "INVALID_CREDENTIALS"
+                message: "Correo o contraseña incorrectos."
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/logout:
+    post:
+      tags:
+        - Autenticación y Seguridad
+      summary: Cerrar sesión del administrador (RF-05)
+      description: Destruye la sesión activa y elimina la cookie `admin_session`.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      responses:
+        '200':
+          description: Cierre de sesión exitoso.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: "Sesión finalizada correctamente."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /auth/me:
+    get:
+      tags:
+        - Autenticación y Seguridad
+      summary: Consultar sesión activa del administrador
+      description: Permite al frontend validar si el usuario actual posee una sesión de administrador válida.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Sesión válida y activa.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Admin'
+              example:
+                status: "success"
+                data:
+                  id_administrador: 1
+                  nombre: "Administrador General"
+                  email: "admin@tiendamodular.com"
+                  creado_en: "2026-09-30T12:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================================================
+  # CATEGORÍAS (RF-01, RF-03)
+  # ==========================================================================
+  /categorias:
+    get:
+      tags:
+        - Categorías
+      summary: Listar todas las categorías (Público / RF-01, RF-03)
+      description: Retorna el catálogo completo de categorías para navegación y filtros en el frontend.
+      responses:
+        '200':
+          description: Lista de categorías obtenida con éxito.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Categoria'
+              example:
+                status: "success"
+                data:
+                  - id_categoria: 1
+                    nombre: "Calzado Deportivo"
+                    descripcion: "Tenis y zapatillas ergonómicas"
+                  - id_categoria: 2
+                    nombre: "Ropa y Accesorios"
+                    descripcion: "Prendas de secado rápido y gorras"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Categorías
+      summary: Crear una nueva categoría (Admin / RF-01, RF-05)
+      description: Registra una nueva categoría en el sistema. Requiere sesión de administrador activa.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoriaInput'
+            example:
+              nombre: "Equipamiento Outdoor"
+              descripcion: "Mochilas térmicas, bastones y tiendas de acampar."
+      responses:
+        '201':
+          description: Categoría creada satisfactoriamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Categoria'
+              example:
+                status: "success"
+                data:
+                  id_categoria: 3
+                  nombre: "Equipamiento Outdoor"
+                  descripcion: "Mochilas térmicas, bastones y tiendas de acampar."
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Conflicto. Ya existe una categoría con ese nombre.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                code: "DUPLICATE_CATEGORY_NAME"
+                message: "Ya existe una categoría con el nombre especificado."
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /categorias/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador numérico de la categoría.
+        schema:
+          type: integer
+          example: 1
+
+    get:
+      tags:
+        - Categorías
+      summary: Obtener detalle de una categoría (Público)
+      responses:
+        '200':
+          description: Detalle de la categoría.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Categoria'
+              example:
+                status: "success"
+                data:
+                  id_categoria: 1
+                  nombre: "Calzado Deportivo"
+                  descripcion: "Tenis y zapatillas ergonómicas"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Categorías
+      summary: Actualizar una categoría existente (Admin / RF-01, RF-05)
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoriaInput'
+            example:
+              nombre: "Calzado Profesional y Deportivo"
+              descripcion: "Calzado para atletas y corredores de alto rendimiento."
+      responses:
+        '200':
+          description: Categoría actualizada con éxito.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Categoria'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: El nuevo nombre ya está ocupado por otra categoría.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Categorías
+      summary: Eliminar una categoría (Admin / RF-01, RF-05)
+      description: |
+        Elimina la categoría indicada. Si tiene productos asociados, la base de datos aplicará
+        `RESTRICT` y la API responderá con `409 Conflict`.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      responses:
+        '200':
+          description: Categoría eliminada correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: "Categoría eliminada exitosamente."
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: No es posible eliminar una categoría que posee productos vinculados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                code: "CATEGORY_HAS_PRODUCTS"
+                message: "No se puede eliminar la categoría porque contiene productos asociados."
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================================================
+  # PRODUCTOS (RF-02, RF-03, RF-07)
+  # ==========================================================================
+  /productos:
+    get:
+      tags:
+        - Productos
+      summary: Listar productos con filtros y paginación (Público / RF-02, RF-03, RF-07)
+      description: |
+        Permite explorar los productos de la tienda. Soporta:
+        - Filtro por categoría mediante `id_categoria` (RF-03).
+        - Búsqueda por palabras clave en nombre o descripción mediante `q` (RF-07).
+        - Paginación simple mediante `page` y `limit`.
+      parameters:
+        - name: id_categoria
+          in: query
+          required: false
+          description: ID de la categoría para filtrar productos.
+          schema:
+            type: integer
+            example: 1
+        - name: q
+          in: query
+          required: false
+          description: Término de búsqueda por nombre o palabras clave.
+          schema:
+            type: string
+            example: "running"
+        - name: page
+          in: query
+          required: false
+          description: Número de página actual (inicia en 1).
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+            example: 1
+        - name: limit
+          in: query
+          required: false
+          description: Cantidad de productos por página.
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+            example: 10
+      responses:
+        '200':
+          description: Listado paginado de productos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductosPaginadosResponse'
+              example:
+                status: "success"
+                data:
+                  - id_producto: 1
+                    id_categoria: 1
+                    categoria_nombre: "Calzado Deportivo"
+                    nombre: "Tenis Running Nitro 2.0"
+                    descripcion: "Calzado ligero con suela de amortiguación reactiva."
+                    precio: 89.99
+                    stock: 25
+                    imagen_url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff"
+                meta:
+                  total: 1
+                  page: 1
+                  limit: 10
+                  totalPages: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Productos
+      summary: Crear un nuevo producto (Admin / RF-02, RF-05)
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoInput'
+            example:
+              id_categoria: 1
+              nombre: "Zapatillas Trail Runner Waterproof"
+              descripcion: "Calzado con agarre multidireccional y membrana impermeable."
+              precio: 115.50
+              stock: 14
+              imagen_url: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a"
+      responses:
+        '201':
+          description: Producto registrado exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Producto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /productos/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador numérico del producto.
+        schema:
+          type: integer
+          example: 1
+
+    get:
+      tags:
+        - Productos
+      summary: Obtener detalle de un producto (Público)
+      responses:
+        '200':
+          description: Información completa del producto.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Producto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Productos
+      summary: Actualizar datos y stock de un producto (Admin / RF-02, RF-05)
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoInput'
+            example:
+              id_categoria: 1
+              nombre: "Tenis Running Nitro 2.0 (Edición 2026)"
+              descripcion: "Nueva versión mejorada con suela ergonómica de doble densidad."
+              precio: 95.00
+              stock: 35
+              imagen_url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff"
+      responses:
+        '200':
+          description: Producto modificado correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Producto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Productos
+      summary: Eliminar un producto (Admin / RF-02, RF-05)
+      description: |
+        Elimina el producto. Si el producto ya figura en renglones de `detalle_pedido`,
+        la base de datos activará la política `ON DELETE RESTRICT` y la API responderá con `409 Conflict`.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      responses:
+        '200':
+          description: Producto eliminado exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: "Producto eliminado exitosamente."
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflicto. El producto está vinculado a pedidos históricos y no puede borrarse.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                code: "PRODUCT_HAS_ORDERS"
+                message: "No es posible eliminar el producto porque existen pedidos registrados asociados."
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================================================
+  # PEDIDOS (RF-04, RF-06, RF-08)
+  # ==========================================================================
+  /pedidos:
+    post:
+      tags:
+        - Pedidos
+      summary: Confirmar y crear pedido desde el carrito (Público / RF-04, RF-06)
+      description: |
+        Endpoint público mediante el cual un cliente envía sus datos básicos y los ítems del carrito.
+        
+        **Lógica transaccional de negocio ejecutada por el backend**:
+        1. Inicia una transacción SQL (`BEGIN`).
+        2. Bloquea pesimistamente las filas de los productos solicitados (`SELECT ... FOR UPDATE`).
+        3. Comprueba que exista stock suficiente (`stock >= cantidad`). Si falta inventario, hace `ROLLBACK` y retorna `409 Conflict`.
+        4. Descuenta el inventario (`stock = stock - cantidad`).
+        5. Captura el `precio_unitario` vigente en la BD para cada renglón y calcula el `total` general.
+        6. Inserta la orden en `pedido` y sus renglones en `detalle_pedido`.
+        7. Confirma la transacción (`COMMIT`).
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoInput'
+            example:
+              nombre_cliente: "Carlos Mendoza"
+              contacto_cliente: "carlos.mendoza@example.com / +57 300 1234567"
+              items:
+                - id_producto: 1
+                  cantidad: 2
+                - id_producto: 3
+                  cantidad: 1
+      responses:
+        '201':
+          description: Pedido registrado exitosamente. Stock descontado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/PedidoDetallado'
+              example:
+                status: "success"
+                data:
+                  id_pedido: 101
+                  nombre_cliente: "Carlos Mendoza"
+                  contacto_cliente: "carlos.mendoza@example.com / +57 300 1234567"
+                  fecha: "2026-10-01T15:30:00Z"
+                  total: 204.88
+                  estado: "PENDIENTE"
+                  detalles:
+                    - id_detalle: 1
+                      id_producto: 1
+                      nombre_producto: "Tenis Running Nitro 2.0"
+                      cantidad: 2
+                      precio_unitario: 89.99
+                      subtotal: 179.98
+                    - id_detalle: 2
+                      id_producto: 3
+                      nombre_producto: "Camiseta Técnica Dry-Fit"
+                      cantidad: 1
+                      precio_unitario: 24.90
+                      subtotal: 24.90
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Conflicto por falta de stock disponible en uno o más productos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                code: "INSUFFICIENT_STOCK"
+                message: "Stock insuficiente para el producto 'Tenis Running Nitro 2.0'. Disponibles: 1, Solicitados: 2."
+                details:
+                  - field: "items[0].cantidad"
+                    message: "Solo restan 1 unidades en inventario."
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      tags:
+        - Pedidos
+      summary: Listar pedidos registrados (Admin / RF-08)
+      description: |
+        Consulta el historial consolidado de pedidos. Requiere sesión activa de administrador.
+        Permite filtrar por estado y paginar resultados.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: estado
+          in: query
+          required: false
+          description: Filtrar por estado del pedido.
+          schema:
+            type: string
+            enum: [PENDIENTE, CONFIRMADO, EN_PREPARACION, COMPLETADO, CANCELADO]
+            example: PENDIENTE
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Listado paginado de pedidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PedidosPaginadosResponse'
+              example:
+                status: "success"
+                data:
+                  - id_pedido: 101
+                    nombre_cliente: "Carlos Mendoza"
+                    contacto_cliente: "carlos.mendoza@example.com"
+                    fecha: "2026-10-01T15:30:00Z"
+                    total: 204.88
+                    estado: "PENDIENTE"
+                meta:
+                  total: 1
+                  page: 1
+                  limit: 10
+                  totalPages: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /pedidos/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador numérico del pedido.
+        schema:
+          type: integer
+          example: 101
+
+    get:
+      tags:
+        - Pedidos
+      summary: Consultar detalle de un pedido específico (Admin / RF-08)
+      description: Recupera la cabecera y el desglose de productos/cantidades de una orden.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Información detallada de la orden y sus ítems.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/PedidoDetallado'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /pedidos/{id}/estado:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador numérico del pedido.
+        schema:
+          type: integer
+          example: 101
+
+    patch:
+      tags:
+        - Pedidos
+      summary: Cambiar estado de un pedido (Admin / RF-08)
+      description: Permite al administrador actualizar la fase operativa del pedido.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - estado
+              properties:
+                estado:
+                  type: string
+                  enum: [PENDIENTE, CONFIRMADO, EN_PREPARACION, COMPLETADO, CANCELADO]
+                  example: CONFIRMADO
+      responses:
+        '200':
+          description: Estado del pedido modificado correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+# ============================================================================
+# COMPONENTES Y ESQUEMAS REUTILIZABLES
+# ============================================================================
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: admin_session
+      description: Cookie de sesión cifrada y exclusiva para administradores (httpOnly, Secure, SameSite).
+
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Token anti-CSRF emitido por el endpoint `/auth/csrf` (Double Submit Cookie).
+
+  schemas:
+    # --- Autenticación ---
+    LoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "admin@tiendamodular.com"
+        password:
+          type: string
+          format: password
+          example: "PasswordSeguro123!"
+
+    Admin:
+      type: object
+      properties:
+        id_administrador:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Administrador General"
+        email:
+          type: string
+          format: email
+          example: "admin@tiendamodular.com"
+        creado_en:
+          type: string
+          format: date-time
+          example: "2026-09-30T12:00:00Z"
+
+    CsrfResponse:
+      type: object
+      properties:
+        csrfToken:
+          type: string
+          example: "d3b07384d113edec49eaa6238ad5ff00"
+
+    # --- Categoría ---
+    CategoriaInput:
+      type: object
+      required:
+        - nombre
+      properties:
+        nombre:
+          type: string
+          maxLength: 100
+          example: "Calzado Deportivo"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Tenis, botas y zapatillas de entrenamiento."
+
+    Categoria:
+      type: object
+      properties:
+        id_categoria:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Calzado Deportivo"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Tenis, botas y zapatillas de entrenamiento."
+
+    # --- Producto ---
+    ProductoInput:
+      type: object
+      required:
+        - id_categoria
+        - nombre
+        - precio
+        - stock
+      properties:
+        id_categoria:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          maxLength: 150
+          example: "Tenis Running Nitro 2.0"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Calzado ligero con suela de amortiguación reactiva."
+        precio:
+          type: number
+          format: float
+          minimum: 0
+          example: 89.99
+        stock:
+          type: integer
+          minimum: 0
+          example: 25
+        imagen_url:
+          type: string
+          format: uri
+          maxLength: 255
+          nullable: true
+          example: "https://images.unsplash.com/photo-1542291026-7eec264c27ff"
+
+    Producto:
+      type: object
+      properties:
+        id_producto:
+          type: integer
+          example: 1
+        id_categoria:
+          type: integer
+          example: 1
+        categoria_nombre:
+          type: string
+          example: "Calzado Deportivo"
+        nombre:
+          type: string
+          example: "Tenis Running Nitro 2.0"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Calzado ligero con suela de amortiguación reactiva."
+        precio:
+          type: number
+          format: float
+          example: 89.99
+        stock:
+          type: integer
+          example: 25
+        imagen_url:
+          type: string
+          nullable: true
+          example: "https://images.unsplash.com/photo-1542291026-7eec264c27ff"
+
+    # --- Pedidos ---
+    ItemPedidoInput:
+      type: object
+      required:
+        - id_producto
+        - cantidad
+      properties:
+        id_producto:
+          type: integer
+          example: 1
+        cantidad:
+          type: integer
+          minimum: 1
+          example: 2
+
+    PedidoInput:
+      type: object
+      required:
+        - nombre_cliente
+        - contacto_cliente
+        - items
+      properties:
+        nombre_cliente:
+          type: string
+          maxLength: 100
+          example: "Carlos Mendoza"
+        contacto_cliente:
+          type: string
+          maxLength: 100
+          example: "carlos.mendoza@example.com / +57 300 1234567"
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ItemPedidoInput'
+
+    Pedido:
+      type: object
+      properties:
+        id_pedido:
+          type: integer
+          example: 101
+        nombre_cliente:
+          type: string
+          example: "Carlos Mendoza"
+        contacto_cliente:
+          type: string
+          example: "carlos.mendoza@example.com"
+        fecha:
+          type: string
+          format: date-time
+          example: "2026-10-01T15:30:00Z"
+        total:
+          type: number
+          format: float
+          example: 204.88
+        estado:
+          type: string
+          enum: [PENDIENTE, CONFIRMADO, EN_PREPARACION, COMPLETADO, CANCELADO]
+          example: "PENDIENTE"
+
+    DetalleItemPedido:
+      type: object
+      properties:
+        id_detalle:
+          type: integer
+          example: 1
+        id_producto:
+          type: integer
+          example: 1
+        nombre_producto:
+          type: string
+          example: "Tenis Running Nitro 2.0"
+        cantidad:
+          type: integer
+          example: 2
+        precio_unitario:
+          type: number
+          format: float
+          example: 89.99
+        subtotal:
+          type: number
+          format: float
+          example: 179.98
+
+    PedidoDetallado:
+      allOf:
+        - $ref: '#/components/schemas/Pedido'
+        - type: object
+          properties:
+            detalles:
+              type: array
+              items:
+                $ref: '#/components/schemas/DetalleItemPedido'
+
+    # --- Paginación ---
+    PaginacionMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 45
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 5
+
+    ProductosPaginadosResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Producto'
+        meta:
+          $ref: '#/components/schemas/PaginacionMeta'
+
+    PedidosPaginadosResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pedido'
+        meta:
+          $ref: '#/components/schemas/PaginacionMeta'
+
+    # --- Respuestas de Error Uniformes ---
+    ErrorDetalle:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "precio"
+        message:
+          type: string
+          example: "El precio debe ser un número mayor o igual a cero."
+
+    ErrorResponse:
+      type: object
+      required:
+        - status
+        - code
+        - message
+      properties:
+        status:
+          type: string
+          example: error
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Los parámetros enviados no cumplen con los requisitos de validación."
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetalle'
+
+  # --- Respuestas Estándar ---
+  responses:
+    BadRequest:
+      description: Petición sintácticamente incorrecta o parámetros de ruta no válidos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "error"
+            code: "BAD_REQUEST"
+            message: "El parámetro de identificador debe ser un número entero válido."
+
+    Unauthorized:
+      description: No autenticado. Falta la cookie de sesión o ha caducado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "error"
+            code: "UNAUTHORIZED"
+            message: "Acceso no autorizado. Debe iniciar sesión en el panel administrativo."
+
+    Forbidden:
+      description: Prohibido. Token CSRF ausente, manipulado o inválido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "error"
+            code: "CSRF_TOKEN_INVALID"
+            message: "Fallo de validación de seguridad CSRF. Token ausente o incorrecto."
+
+    NotFound:
+      description: Recurso no encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "error"
+            code: "NOT_FOUND"
+            message: "El recurso solicitado no fue encontrado en el servidor."
+
+    UnprocessableEntity:
+      description: Error de validación semántica de campos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "error"
+            code: "UNPROCESSABLE_ENTITY"
+            message: "Errores de validación en los campos del formulario."
+            details:
+              - field: "stock"
+                message: "El stock no puede ser un valor negativo."
+
+    InternalServerError:
+      description: Error interno del servidor no controlado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "error"
+            code: "INTERNAL_SERVER_ERROR"
+            message: "Ocurrió un error inesperado en el servidor. Intente de nuevo más tarde."
