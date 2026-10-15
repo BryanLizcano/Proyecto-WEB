@@ -1,0 +1,1 @@
+<template><section class="not-found page-wrap"><p class="eyebrow">ERROR 404</p><h1>Esta ruta no está en la colección.</h1><RouterLink class="button button-dark" to="/">Volver a la tienda</RouterLink></section></template>
