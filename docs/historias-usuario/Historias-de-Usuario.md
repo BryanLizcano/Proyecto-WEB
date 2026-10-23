@@ -30,14 +30,14 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 | **HU-06** | Editar datos, precio y stock de un producto | EP-02 | RF-02 | S3 (Sem 12) | 5 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
 | **HU-07** | Eliminar un producto sin pedidos asociados | EP-02 | RF-02 | S3 (Sem 12) | 3 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
 | **HU-08** | Explorar catálogo paginado de productos | EP-03 | RF-03 | S3 (Sem 12) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
-| **HU-09** | Filtrar productos del catálogo por categoría | EP-03 | RF-03 | S3 (Sem 12) | 3 | `[x]` Hecho | `[~]` Bug URL/Header | **En progreso** |
+| **HU-09** | Filtrar productos del catálogo por categoría | EP-03 | RF-03 | S3 (Sem 12) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-10** | Buscar productos por nombre o palabras clave | EP-03 | RF-07 | S3 (Sem 12) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-11** | Consultar vista detallada de un producto | EP-03 | RF-03 | S3 (Sem 12) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-12** | Agregar productos al carrito validando stock | EP-04 | RF-04 | S4 (Sem 13) | 5 | `N/A` *(Cliente)* | `[x]` Hecho | **Completado** |
 | **HU-13** | Gestionar ítems del carrito y calcular total en tiempo real | EP-04 | RF-04 | S4 (Sem 13) | 5 | `N/A` *(Cliente)* | `[x]` Hecho | **Completado** |
 | **HU-14** | Confirmar pedido (Checkout) y descontar stock en BD | EP-04 | RF-06 | S4 (Sem 13) | 8 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
-| **HU-15** | Iniciar y cerrar sesión como administrador | EP-05 | RF-05 | S4 (Sem 13) | 5 | `[ ]` Por hacer | `[x]` Hecho | **En progreso** |
-| **HU-16** | Proteger operaciones mutables con token CSRF | EP-05 | RNF-03 | S5 (Sem 14) | 5 | `[ ]` Por hacer | `[~]` Parcial | **En progreso** |
+| **HU-15** | Iniciar y cerrar sesión como administrador | EP-05 | RF-05 | S4 (Sem 13) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
+| **HU-16** | Proteger operaciones mutables con token CSRF | EP-05 | RNF-03 | S5 (Sem 14) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-17** | Consultar historial y detalle de pedidos en el panel admin | EP-05 | RF-08 | S4 (Sem 13) | 5 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
 | **HU-18** | Actualizar el estado operativo de un pedido | EP-05 | RF-08 | S4 (Sem 13) | 3 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
 
