@@ -1,6 +1,8 @@
 const validator = require('validator');
 const ApiError = require('../utils/apiError');
 
+const VALID_ORDER_STATUSES = ['PENDIENTE', 'CONFIRMADO', 'EN_PREPARACION', 'COMPLETADO', 'CANCELADO'];
+
 function validateId(req, res, next) {
   const { id } = req.params;
   const numId = parseInt(id, 10);
@@ -148,6 +150,105 @@ function validateLoginInput(req, res, next) {
   return next();
 }
 
+function validateOrderInput(req, res, next) {
+  const { nombre_cliente, contacto_cliente, items } = req.body || {};
+  const details = [];
+
+  if (!nombre_cliente || typeof nombre_cliente !== 'string' || validator.isEmpty(nombre_cliente.trim())) {
+    details.push({ field: 'nombre_cliente', message: 'El nombre del cliente es obligatorio.' });
+  } else if (!validator.isLength(nombre_cliente.trim(), { min: 1, max: 100 })) {
+    details.push({ field: 'nombre_cliente', message: 'El nombre del cliente no puede exceder 100 caracteres.' });
+  }
+
+  if (!contacto_cliente || typeof contacto_cliente !== 'string' || validator.isEmpty(contacto_cliente.trim())) {
+    details.push({ field: 'contacto_cliente', message: 'El dato de contacto del cliente es obligatorio.' });
+  } else if (!validator.isLength(contacto_cliente.trim(), { min: 1, max: 100 })) {
+    details.push({ field: 'contacto_cliente', message: 'El dato de contacto no puede exceder 100 caracteres.' });
+  }
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    details.push({ field: 'items', message: 'El pedido debe contener al menos un producto en el arreglo items.' });
+  } else {
+    items.forEach((item, index) => {
+      if (!item || typeof item !== 'object') {
+        details.push({ field: `items[${index}]`, message: 'Cada ítem debe ser un objeto válido.' });
+        return;
+      }
+      const numId = parseInt(item.id_producto, 10);
+      if (item.id_producto === undefined || Number.isNaN(numId) || !Number.isInteger(Number(item.id_producto)) || numId <= 0) {
+        details.push({ field: `items[${index}].id_producto`, message: 'El id_producto debe ser un entero positivo.' });
+      }
+
+      const numCant = parseInt(item.cantidad, 10);
+      if (item.cantidad === undefined || Number.isNaN(numCant) || !Number.isInteger(Number(item.cantidad)) || numCant <= 0) {
+        details.push({ field: `items[${index}].cantidad`, message: 'La cantidad debe ser un número entero mayor a cero.' });
+      }
+    });
+  }
+
+  if (details.length > 0) {
+    return next(ApiError.unprocessable('Errores de validación en los campos del formulario.', details));
+  }
+
+  req.body.nombre_cliente = validator.escape(nombre_cliente.trim());
+  req.body.contacto_cliente = validator.escape(contacto_cliente.trim());
+  req.body.items = items.map((it) => ({
+    id_producto: parseInt(it.id_producto, 10),
+    cantidad: parseInt(it.cantidad, 10),
+  }));
+
+  return next();
+}
+
+function validateOrderStatusInput(req, res, next) {
+  const { estado } = req.body || {};
+  if (!estado || typeof estado !== 'string' || !VALID_ORDER_STATUSES.includes(estado.trim().toUpperCase())) {
+    return next(
+      ApiError.unprocessable('Errores de validación en los campos del formulario.', [
+        {
+          field: 'estado',
+          message: `El estado debe ser uno de los siguientes valores: ${VALID_ORDER_STATUSES.join(', ')}.`,
+        },
+      ])
+    );
+  }
+
+  req.body.estado = estado.trim().toUpperCase();
+  return next();
+}
+
+function validateOrderQueryParams(req, res, next) {
+  const { estado, page, limit } = req.query;
+
+  if (estado !== undefined && typeof estado === 'string') {
+    const upperEstado = estado.trim().toUpperCase();
+    if (upperEstado && !VALID_ORDER_STATUSES.includes(upperEstado)) {
+      return next(
+        ApiError.badRequest(`El filtro de estado debe ser uno de: ${VALID_ORDER_STATUSES.join(', ')}.`)
+      );
+    }
+    req.query.estado = upperEstado;
+  }
+
+  if (page !== undefined) {
+    const parsedPage = parseInt(page, 10);
+    if (!/^\d+$/.test(page) || Number.isNaN(parsedPage) || parsedPage < 1) {
+      return next(ApiError.badRequest('El parámetro page debe ser un entero mayor o igual a 1.'));
+    }
+    req.query.page = parsedPage;
+  }
+
+  if (limit !== undefined) {
+    const parsedLimit = parseInt(limit, 10);
+    if (!/^\d+$/.test(limit) || Number.isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 50) {
+      return next(ApiError.badRequest('El parámetro limit debe ser un entero entre 1 y 50.'));
+    }
+    req.query.limit = parsedLimit;
+  }
+
+  return next();
+}
+
 module.exports = {
   validateId,
   validateCategoryInput,
@@ -155,4 +256,8 @@ module.exports = {
   validateProductoInput,
   validateProductQueryParams,
   validateLoginInput,
+  validateOrderInput,
+  validateOrderStatusInput,
+  validateOrderQueryParams,
+  VALID_ORDER_STATUSES,
 };

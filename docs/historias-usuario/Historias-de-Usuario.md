@@ -35,7 +35,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 | **HU-11** | Consultar vista detallada de un producto | EP-03 | RF-03 | S3 (Sem 12) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-12** | Agregar productos al carrito validando stock | EP-04 | RF-04 | S4 (Sem 13) | 5 | `N/A` *(Cliente)* | `[x]` Hecho | **Completado** |
 | **HU-13** | Gestionar ítems del carrito y calcular total en tiempo real | EP-04 | RF-04 | S4 (Sem 13) | 5 | `N/A` *(Cliente)* | `[x]` Hecho | **Completado** |
-| **HU-14** | Confirmar pedido (Checkout) y descontar stock en BD | EP-04 | RF-06 | S4 (Sem 13) | 8 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
+| **HU-14** | Confirmar pedido (Checkout) y descontar stock en BD | EP-04 | RF-06 | S4 (Sem 13) | 8 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-15** | Iniciar y cerrar sesión como administrador | EP-05 | RF-05 | S4 (Sem 13) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-16** | Proteger operaciones mutables con token CSRF | EP-05 | RNF-03 | S5 (Sem 14) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-17** | Consultar historial y detalle de pedidos en el panel admin | EP-05 | RF-08 | S4 (Sem 13) | 5 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
@@ -184,7 +184,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 * **Criterios de Aceptación:**
   1. El backend abre una transacción SQL (`BEGIN`), bloquea los productos con `SELECT ... FOR UPDATE`, verifica `stock >= cantidad` (si falla hace `ROLLBACK` y devuelve `409 INSUFFICIENT_STOCK`), descuenta el stock, calcula el `total` oficial con los precios de la BD, inserta en `pedido` y `detalle_pedido` y hace `COMMIT`.
   2. El frontend solicita `nombre_cliente` y `contacto_cliente`, envía los ítems, vacía el carrito al recibir `201 Created` y muestra la confirmación con el número de pedido (`id_pedido`).
-* **Estado:** ❌ **Por hacer** (Falta en Backend y Frontend).
+* **Estado:** ✅ **Completado** (Backend implementado con transacción atómica SQL, bloqueo pesimista `FOR UPDATE` y descuento de existencias en [`orderService.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/services/orderService.js) y [`orderRoutes.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/routes/orderRoutes.js); Frontend con flujo de checkout, validaciones y vista de confirmación en [`CartDrawer.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/components/CartDrawer.vue) y [`orders.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/services/orders.js); probado exhaustivamente en [`orders.test.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/tests/orders.test.js)).
 
 ---
 

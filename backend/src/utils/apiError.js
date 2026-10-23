@@ -23,8 +23,8 @@ class ApiError extends Error {
     return new ApiError(404, code, message);
   }
 
-  static conflict(message, code = 'CONFLICT') {
-    return new ApiError(409, code, message);
+  static conflict(message, code = 'CONFLICT', details = null) {
+    return new ApiError(409, code, message, details);
   }
 
   static unprocessable(message = 'Errores de validación en los campos del formulario.', details = []) {
