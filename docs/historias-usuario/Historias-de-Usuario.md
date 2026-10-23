@@ -198,7 +198,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
   1. Compara la contraseña usando `bcrypt` contra `administrador.password_hash`.
   2. Establece la cookie `admin_session` con banderas `httpOnly: true`, `sameSite: 'lax'` y `secure: process.env.NODE_ENV === 'production'`.
   3. El guard de Vue Router redirige a `/admin/login` si `GET /auth/me` responde `401`.
-* **Estado:** 🟡 **En progreso** (Frontend 100% listo en [`auth.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/stores/auth.js) y [`AdminLoginView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminLoginView.vue); falta implementar en Backend).
+* **Estado:** ✅ **Completado** (Implementado en Backend con authController, authService, authRoutes y cookie-parser con httpOnly; probado en auth.test.js e integrado con frontend AdminLoginView.vue y auth.js).
 
 #### **HU-16: Proteger operaciones mutables con token CSRF**
 * **Rol:** Sistema / Seguridad
@@ -207,7 +207,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 * **Criterios de Aceptación:**
   1. `GET /api/v1/auth/csrf` emite una cookie CSRF y devuelve `{ csrfToken }` en el cuerpo JSON.
   2. El middleware CSRF del backend rechaza con `403 Forbidden` (`CSRF_TOKEN_INVALID`) cualquier petición mutable cuyo header `X-CSRF-Token` no coincida con la cookie.
-* **Estado:** 🟡 **En progreso** (Interceptor creado en [`frontend/src/services/api.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/services/api.js); falta endpoint y middleware en Backend).
+* **Estado:** ✅ **Completado** (Implementado en Backend con GET /api/v1/auth/csrf y csrfMiddleware con patron Double Submit Cookie; probado exhaustivamente en auth.test.js e integrado en Axios interceptors).
 
 #### **HU-17: Consultar historial y detalle de pedidos en el panel administrativo**
 * **Rol:** Administrador
