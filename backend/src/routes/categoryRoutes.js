@@ -4,17 +4,17 @@ const {
   getCategoryById,
   createCategory,
 } = require('../controllers/categoryController');
+const authMiddleware = require('../middleware/authMiddleware');
+const csrfMiddleware = require('../middleware/csrfMiddleware');
 const {
   validateId,
-  validateCategoriaInput,
+  validateCategoryInput,
 } = require('../middleware/validatorMiddleware');
 
 const router = Router();
 
 router.get('/', getCategories);
 router.get('/:id', validateId, getCategoryById);
-
-// TODO(auth): Proteger con middleware de autenticación admin_session y validación X-CSRF-Token en Semana 13-14
-router.post('/', validateCategoriaInput, createCategory);
+router.post('/', authMiddleware, csrfMiddleware, validateCategoryInput, createCategory);
 
 module.exports = router;

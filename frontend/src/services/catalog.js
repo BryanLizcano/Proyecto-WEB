@@ -4,6 +4,10 @@ export async function getCategories() {
   const { data } = await api.get('/categorias')
   return data.data
 }
+export async function getCategory(id) {
+  const { data } = await api.get(`/categorias/${id}`)
+  return data.data
+}
 export async function getProducts(params = {}) {
   const { data } = await api.get('/productos', { params })
   return data

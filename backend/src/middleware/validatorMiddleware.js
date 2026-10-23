@@ -15,7 +15,7 @@ function validateId(req, res, next) {
   return next();
 }
 
-function validateCategoriaInput(req, res, next) {
+function validateCategoryInput(req, res, next) {
   const { nombre, descripcion } = req.body || {};
   const details = [];
 
@@ -116,9 +116,31 @@ function validateProductQueryParams(req, res, next) {
   return next();
 }
 
+function validateLoginInput(req, res, next) {
+  const { email, password } = req.body || {};
+  const details = [];
+
+  if (!email || typeof email !== 'string' || !validator.isEmail(email.trim())) {
+    details.push({ field: 'email', message: 'Debe ingresar un correo electrónico válido.' });
+  }
+
+  if (!password || typeof password !== 'string' || validator.isEmpty(password)) {
+    details.push({ field: 'password', message: 'La contraseña es obligatoria.' });
+  }
+
+  if (details.length > 0) {
+    return next(ApiError.unprocessable('Errores de validación en los campos del formulario.', details));
+  }
+
+  req.body.email = email.trim().toLowerCase();
+  return next();
+}
+
 module.exports = {
   validateId,
-  validateCategoriaInput,
+  validateCategoryInput,
+  validateCategoriaInput: validateCategoryInput,
   validateProductoInput,
   validateProductQueryParams,
+  validateLoginInput,
 };

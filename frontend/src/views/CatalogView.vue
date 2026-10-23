@@ -1,12 +1,13 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { Search, SlidersHorizontal, X } from '@lucide/vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import ProductCard from '../components/ProductCard.vue'
 import { getApiError } from '../services/api'
 import { getCategories, getProducts } from '../services/catalog'
 
 const route = useRoute()
+const router = useRouter()
 const categories = ref([])
 const products = ref([])
 const selectedCategory = ref(route.query.category || '')
@@ -38,7 +39,7 @@ async function loadProducts() {
   }
 }
 function submitSearch() { query.value = searchInput.value.trim(); page.value = 1 }
-function selectCategory(id) { selectedCategory.value = id; page.value = 1 }
+function selectCategory(id) { selectedCategory.value = id; page.value = 1; router.push(id ? { path: '/', query: { category: id } } : { path: '/' }) }
 watch([selectedCategory, query, page], loadProducts)
 watch(() => route.query.category, (value) => { selectedCategory.value = value || ''; page.value = 1 })
 onMounted(async () => { await Promise.all([loadCategories(), loadProducts()]) })

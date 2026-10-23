@@ -1,5 +1,5 @@
 const productoModel = require('../models/productoModel');
-const categoriaModel = require('../models/categoriaModel');
+const { findCategoryById } = require('./categoryService');
 const ApiError = require('../utils/apiError');
 
 async function getProducts({ id_categoria, q, page = 1, limit = 10 } = {}) {
@@ -34,7 +34,7 @@ async function getProductById(id) {
 }
 
 async function createProduct(data) {
-  const category = await categoriaModel.findById(data.id_categoria);
+  const category = await findCategoryById(data.id_categoria);
   if (!category) {
     throw ApiError.unprocessable('Errores de validación en los campos del formulario.', [
       {
