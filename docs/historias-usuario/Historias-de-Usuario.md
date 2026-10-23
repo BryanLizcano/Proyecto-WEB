@@ -26,7 +26,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 | **HU-02** | Crear una nueva categoría de productos | EP-01 | RF-01 | S2 (Sem 11) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-03** | Editar una categoría existente | EP-01 | RF-01 | S3 (Sem 12) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-04** | Eliminar una categoría sin productos asociados | EP-01 | RF-01 | S3 (Sem 12) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
-| **HU-05** | Registrar un nuevo producto con stock e imagen | EP-02 | RF-02 | S2 (Sem 11) | 5 | `[x]` Hecho *(sin Auth)* | `[~]` Bloqueado CSRF | **En progreso** |
+| **HU-05** | Registrar un nuevo producto con stock e imagen | EP-02 | RF-02 | S2 (Sem 11) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-06** | Editar datos, precio y stock de un producto | EP-02 | RF-02 | S3 (Sem 12) | 5 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
 | **HU-07** | Eliminar un producto sin pedidos asociados | EP-02 | RF-02 | S3 (Sem 12) | 3 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
 | **HU-08** | Explorar catálogo paginado de productos | EP-03 | RF-03 | S3 (Sem 12) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
