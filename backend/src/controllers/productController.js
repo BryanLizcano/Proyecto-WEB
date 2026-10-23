@@ -28,8 +28,18 @@ async function createProduct(req, res, next) {
   }
 }
 
+async function updateProduct(req, res, next) {
+  try {
+    const updatedProduct = await productService.updateProduct(req.params.id, req.body);
+    return sendSuccess(res, updatedProduct, 200);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   getProducts,
   getProductById,
   createProduct,
+  updateProduct,
 };

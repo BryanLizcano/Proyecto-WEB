@@ -108,7 +108,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
   1. Valida todos los campos igual que en la creación y verifica que el producto exista (`404 Not Found` si no existe).
   2. Retorna `200 OK` con el producto actualizado incluyendo `categoria_nombre`.
   3. El panel admin permite editar cualquier fila de producto desde la tabla.
-* **Estado:** ❌ **Por hacer** (Falta en Backend y Frontend).
+* **Estado:** ✅ **Completado** (Backend en [`productRoutes.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/routes/productRoutes.js) protegido con `authMiddleware` y `csrfMiddleware`; validaciones semánticas completas y sanitización XSS en [`validatorMiddleware.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/middleware/validatorMiddleware.js); Frontend con modo edición integrado en [`AdminDashboardView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminDashboardView.vue) y [`catalog.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/services/catalog.js); suite de pruebas automatizadas en [`products.test.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/tests/products.test.js)).
 
 #### **HU-07: Eliminar un producto sin pedidos asociados**
 * **Rol:** Administrador

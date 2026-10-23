@@ -32,3 +32,7 @@ export async function createProduct(payload) {
   const { data } = await api.post('/productos', payload)
   return data.data
 }
+export async function updateProduct(id, payload) {
+  const { data } = await api.put(`/productos/${id}`, payload)
+  return data.data
+}

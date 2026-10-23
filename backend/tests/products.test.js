@@ -79,7 +79,7 @@ describe('Endpoints de Productos (/api/v1/productos)', () => {
 
       const res = await request(app)
         .post('/api/v1/productos')
-        .set('Cookie', 'admin_session=1; XSRF-TOKEN=valid-csrf-token')
+        .set('Cookie', authCookie)
         .send({
           id_categoria: 1,
           nombre: 'Tenis Trail',
@@ -110,8 +110,8 @@ describe('Endpoints de Productos (/api/v1/productos)', () => {
     });
 
     it('debe responder 422 cuando la categoría referenciada no existe', async () => {
-      query.mockResolvedValueOnce({ rows: [mockAdmin] }); // Auth
-      query.mockResolvedValueOnce({ rows: [] }); // findCategoryById no existe
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
         .post('/api/v1/productos')
@@ -134,7 +134,7 @@ describe('Endpoints de Productos (/api/v1/productos)', () => {
       );
     });
 
-    it('debe responder 422 cuando el precio o stock son negativos', async () => {
+    it('debe responder 422 si id_categoria es negativo o nulo', async () => {
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
 
       const res = await request(app)
@@ -142,19 +142,21 @@ describe('Endpoints de Productos (/api/v1/productos)', () => {
         .set('Cookie', authCookie)
         .set('X-CSRF-Token', validCsrfHeader)
         .send({
-          id_categoria: 1,
+          id_categoria: -1,
           nombre: 'Producto Inválido',
-          precio: -10,
-          stock: -5,
+          precio: 10,
+          stock: 5,
         });
 
       expect(res.status).toBe(422);
-      expect(res.body.status).toBe('error');
-      expect(res.body.code).toBe('UNPROCESSABLE_ENTITY');
-      expect(res.body.details).toHaveLength(2);
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'id_categoria' }),
+        ])
+      );
     });
 
-    it('debe responder 422 cuando id_categoria es inválido o no entero', async () => {
+    it('debe responder 422 si id_categoria es un valor flotante o no entero', async () => {
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
 
       const res = await request(app)
@@ -176,10 +178,74 @@ describe('Endpoints de Productos (/api/v1/productos)', () => {
       );
     });
 
-    it('debe responder 422 cuando nombre está ausente, vacío o excede 150 caracteres', async () => {
+    it('debe responder 422 cuando el precio es negativo', async () => {
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
 
-      const resMissing = await request(app)
+      const res = await request(app)
+        .post('/api/v1/productos')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Producto Precio Negativo',
+          precio: -10,
+          stock: 5,
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'precio' }),
+        ])
+      );
+    });
+
+    it('debe responder 422 cuando el stock es negativo', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .post('/api/v1/productos')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Producto Stock Negativo',
+          precio: 10,
+          stock: -5,
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'stock' }),
+        ])
+      );
+    });
+
+    it('debe responder 422 cuando el precio o stock son negativos simultáneamente', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .post('/api/v1/productos')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Producto Inválido',
+          precio: -10,
+          stock: -5,
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.status).toBe('error');
+      expect(res.body.code).toBe('UNPROCESSABLE_ENTITY');
+      expect(res.body.details).toHaveLength(2);
+    });
+
+    it('debe responder 422 cuando el nombre está ausente o vacío', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
         .post('/api/v1/productos')
         .set('Cookie', authCookie)
         .set('X-CSRF-Token', validCsrfHeader)
@@ -190,13 +256,15 @@ describe('Endpoints de Productos (/api/v1/productos)', () => {
           stock: 5,
         });
 
-      expect(resMissing.status).toBe(422);
-      expect(resMissing.body.details).toEqual(
+      expect(res.status).toBe(422);
+      expect(res.body.details).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ field: 'nombre' }),
         ])
       );
+    });
 
+    it('debe responder 422 cuando el nombre excede los 150 caracteres', async () => {
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
 
       const longName = 'A'.repeat(151);
@@ -459,6 +527,393 @@ describe('Endpoints de Productos (/api/v1/productos)', () => {
       expect(res.status).toBe(404);
       expect(res.body.status).toBe('error');
       expect(res.body.code).toBe('NOT_FOUND');
+    });
+  });
+
+  describe('PUT /api/v1/productos/:id (HU-06)', () => {
+    it('debe rechazar con 401 si no hay sesión de administrador activa', async () => {
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', 'XSRF-TOKEN=valid-csrf-token')
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Tenis Editados',
+          precio: 99.99,
+          stock: 15,
+        });
+
+      expect(res.status).toBe(401);
+      expect(res.body.code).toBe('UNAUTHORIZED');
+    });
+
+    it('debe rechazar con 403 si el encabezado X-CSRF-Token está ausente', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', authCookie)
+        .send({
+          id_categoria: 1,
+          nombre: 'Tenis Editados',
+          precio: 99.99,
+          stock: 15,
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('CSRF_TOKEN_INVALID');
+    });
+
+    it('debe rechazar con 403 si el token CSRF es inválido o no coincide', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', 'admin_session=1; XSRF-TOKEN=valid-csrf-token')
+        .set('X-CSRF-Token', 'token-invalido')
+        .send({
+          id_categoria: 1,
+          nombre: 'Tenis Editados',
+          precio: 99.99,
+          stock: 15,
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('CSRF_TOKEN_INVALID');
+    });
+
+    it('debe responder 400 si el id no es un número entero positivo válido', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .put('/api/v1/productos/abc')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Tenis Editados',
+          precio: 99.99,
+          stock: 15,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('BAD_REQUEST');
+    });
+
+    it('debe responder 404 si el producto a actualizar no existe', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .put('/api/v1/productos/999')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Tenis Editados',
+          precio: 99.99,
+          stock: 15,
+        });
+
+      expect(res.status).toBe(404);
+      expect(res.body.code).toBe('NOT_FOUND');
+    });
+
+    it('debe responder 422 si la categoría referenciada no existe', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [
+          {
+            id_producto: 1,
+            id_categoria: 1,
+            nombre: 'Tenis Originales',
+            precio: '80.00',
+            stock: 10,
+          },
+        ],
+      });
+      query.mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 999,
+          nombre: 'Tenis Editados',
+          precio: 99.99,
+          stock: 15,
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe('UNPROCESSABLE_ENTITY');
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'id_categoria' }),
+        ])
+      );
+    });
+
+    it('debe responder 422 si precio, stock o imagen_url son inválidos', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Tenis Inválidos',
+          precio: -25,
+          stock: 4.5,
+          imagen_url: 'invalida-url',
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe('UNPROCESSABLE_ENTITY');
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'precio' }),
+          expect.objectContaining({ field: 'stock' }),
+          expect.objectContaining({ field: 'imagen_url' }),
+        ])
+      );
+    });
+
+    it('debe responder 422 si el nombre está ausente o vacío', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: '   ',
+          precio: 50,
+          stock: 10,
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe('UNPROCESSABLE_ENTITY');
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'nombre' }),
+        ])
+      );
+    });
+
+    it('debe responder 422 si el nombre excede los 150 caracteres', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'A'.repeat(151),
+          precio: 50,
+          stock: 10,
+        });
+
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe('UNPROCESSABLE_ENTITY');
+      expect(res.body.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'nombre' }),
+        ])
+      );
+    });
+
+    it('debe actualizar el producto exitosamente y responder 200 con categoria_nombre', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [
+          {
+            id_producto: 1,
+            id_categoria: 1,
+            nombre: 'Tenis Running',
+            precio: '89.99',
+            stock: 25,
+          },
+        ],
+      });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo' }],
+      });
+      query.mockResolvedValueOnce({
+        rows: [
+          {
+            id_producto: 1,
+            id_categoria: 1,
+            nombre: 'Tenis Running Nitro 2.0 (Edición 2026)',
+            descripcion: 'Versión mejorada',
+            precio: '95.00',
+            stock: 35,
+            imagen_url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
+          },
+        ],
+      });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Tenis Running Nitro 2.0 (Edición 2026)',
+          descripcion: 'Versión mejorada',
+          precio: 95.0,
+          stock: 35,
+          imagen_url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.data.id_producto).toBe(1);
+      expect(res.body.data.nombre).toBe('Tenis Running Nitro 2.0 (Edición 2026)');
+      expect(res.body.data.precio).toBe(95);
+      expect(res.body.data.stock).toBe(35);
+      expect(res.body.data.categoria_nombre).toBe('Calzado Deportivo');
+    });
+
+    it('debe permitir actualizar un producto con precio y stock en 0 (valores límites permitidos)', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [
+          {
+            id_producto: 1,
+            id_categoria: 1,
+            nombre: 'Tenis Originales',
+            precio: '80.00',
+            stock: 10,
+          },
+        ],
+      });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo' }],
+      });
+      query.mockResolvedValueOnce({
+        rows: [
+          {
+            id_producto: 1,
+            id_categoria: 1,
+            nombre: 'Tenis Gratis Agotados',
+            descripcion: 'Promoción',
+            precio: '0.00',
+            stock: 0,
+            imagen_url: null,
+          },
+        ],
+      });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Tenis Gratis Agotados',
+          descripcion: 'Promoción',
+          precio: 0,
+          stock: 0,
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.data.precio).toBe(0);
+      expect(res.body.data.stock).toBe(0);
+    });
+
+    it('debe permitir actualizar un producto omitiendo descripcion e imagen_url', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [
+          {
+            id_producto: 1,
+            id_categoria: 1,
+            nombre: 'Tenis Originales',
+            precio: '80.00',
+            stock: 10,
+          },
+        ],
+      });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo' }],
+      });
+      query.mockResolvedValueOnce({
+        rows: [
+          {
+            id_producto: 1,
+            id_categoria: 1,
+            nombre: 'Tenis Sin Opcionales',
+            descripcion: null,
+            precio: '50.00',
+            stock: 5,
+            imagen_url: null,
+          },
+        ],
+      });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: 'Tenis Sin Opcionales',
+          precio: 50,
+          stock: 5,
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.data.descripcion).toBeNull();
+      expect(res.body.data.imagen_url).toBeNull();
+    });
+
+    it('debe sanitizar contra XSS en nombre y descripción al actualizar el producto', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [{ id_producto: 1, id_categoria: 1, nombre: 'Antiguo' }],
+      });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo' }],
+      });
+      query.mockImplementationOnce((sql, params) => {
+        return Promise.resolve({
+          rows: [
+            {
+              id_producto: 1,
+              id_categoria: params[0],
+              nombre: params[1],
+              descripcion: params[2],
+              precio: params[3],
+              stock: params[4],
+              imagen_url: params[5],
+            },
+          ],
+        });
+      });
+
+      const res = await request(app)
+        .put('/api/v1/productos/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          id_categoria: 1,
+          nombre: '<script>alert("XSS")</script> Tenis Actualizados',
+          descripcion: '<b>Suela de carbono</b>',
+          precio: 150.0,
+          stock: 8,
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.nombre).not.toContain('<script>');
+      expect(res.body.data.nombre).toContain('&lt;script&gt;');
+      expect(res.body.data.descripcion).not.toContain('<b>');
+      expect(res.body.data.descripcion).toContain('&lt;b&gt;');
     });
   });
 });

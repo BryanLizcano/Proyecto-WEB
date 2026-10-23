@@ -10,6 +10,7 @@ import {
   getCategories,
   getProducts,
   updateCategory,
+  updateProduct,
 } from '../services/catalog'
 import { useAuthStore } from '../stores/auth'
 import { formatCurrency } from '../utils/formatCurrency'
@@ -25,6 +26,7 @@ const saving = ref(false)
 const showProductForm = ref(false)
 const showCategoryForm = ref(false)
 const editingCategory = ref(null)
+const editingProduct = ref(null)
 
 const productForm = ref({ id_categoria: '', nombre: '', descripcion: '', precio: '', stock: '', imagen_url: '' })
 const categoryForm = ref({ nombre: '', descripcion: '' })
@@ -54,6 +56,33 @@ function cancelCategoryForm() {
   showCategoryForm.value = false
   editingCategory.value = null
   categoryForm.value = { nombre: '', descripcion: '' }
+}
+
+function startEditProduct(product) {
+  editingProduct.value = product
+  productForm.value = {
+    id_categoria: String(product.id_categoria),
+    nombre: product.nombre,
+    descripcion: product.descripcion || '',
+    precio: product.precio,
+    stock: product.stock,
+    imagen_url: product.imagen_url || '',
+  }
+  showProductForm.value = true
+  activeTab.value = 'products'
+}
+
+function cancelProductForm() {
+  showProductForm.value = false
+  editingProduct.value = null
+  productForm.value = {
+    id_categoria: String(categories.value[0]?.id_categoria || ''),
+    nombre: '',
+    descripcion: '',
+    precio: '',
+    stock: '',
+    imagen_url: '',
+  }
 }
 
 async function submitCategory() {
@@ -102,16 +131,23 @@ async function submitProduct() {
   notice.value = ''
   errorMessage.value = ''
   try {
-    await createProduct({
+    const payload = {
       ...productForm.value,
       id_categoria: Number(productForm.value.id_categoria),
       precio: Number(productForm.value.precio),
       stock: Number(productForm.value.stock),
-      imagen_url: productForm.value.imagen_url || null,
-    })
-    productForm.value = { id_categoria: String(categories.value[0]?.id_categoria || ''), nombre: '', descripcion: '', precio: '', stock: '', imagen_url: '' }
-    showProductForm.value = false
-    notice.value = 'Producto creado.'
+      imagen_url: productForm.value.imagen_url ? productForm.value.imagen_url.trim() : null,
+    }
+
+    if (editingProduct.value) {
+      await updateProduct(editingProduct.value.id_producto, payload)
+      notice.value = 'Producto actualizado exitosamente.'
+    } else {
+      await createProduct(payload)
+      notice.value = 'Producto creado exitosamente.'
+    }
+
+    cancelProductForm()
     await loadDashboard()
   } catch (error) {
     errorMessage.value = getApiError(error)
@@ -185,7 +221,7 @@ onMounted(loadDashboard)
         <button
           class="button button-dark"
           type="button"
-          @click="activeTab === 'products' ? (showProductForm = !showProductForm) : (showCategoryForm ? cancelCategoryForm() : (showCategoryForm = true))"
+          @click="activeTab === 'products' ? (showProductForm ? cancelProductForm() : (showProductForm = true)) : (showCategoryForm ? cancelCategoryForm() : (showCategoryForm = true))"
         >
           <Plus :size="17" /> Añadir {{ activeTab === 'products' ? 'producto' : 'categoría' }}
         </button>
@@ -193,8 +229,8 @@ onMounted(loadDashboard)
 
       <form v-if="showProductForm && activeTab === 'products'" class="admin-form" @submit.prevent="submitProduct">
         <div class="form-heading">
-          <h2>Agregar producto</h2>
-          <button class="text-button" type="button" @click="showProductForm = false">Cancelar</button>
+          <h2>{{ editingProduct ? 'Editar producto' : 'Agregar producto' }}</h2>
+          <button class="text-button" type="button" @click="cancelProductForm">Cancelar</button>
         </div>
         <div class="form-grid">
           <label class="field-label">
@@ -228,7 +264,8 @@ onMounted(loadDashboard)
           </label>
         </div>
         <button class="button button-accent" type="submit" :disabled="saving || !categories.length">
-          {{ saving ? 'Guardando...' : 'Guardar producto' }} <ArrowUpRight :size="17" />
+          {{ saving ? 'Guardando...' : editingProduct ? 'Guardar cambios' : 'Guardar producto' }}
+          <ArrowUpRight :size="17" />
         </button>
       </form>
 
@@ -261,6 +298,7 @@ onMounted(loadDashboard)
               <th>Categoría</th>
               <th>Precio</th>
               <th>Stock</th>
+              <th style="text-align: right;">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -269,9 +307,20 @@ onMounted(loadDashboard)
               <td>{{ product.categoria_nombre }}</td>
               <td>{{ formatCurrency(product.precio) }}</td>
               <td>{{ product.stock }}</td>
+              <td style="text-align: right;">
+                <button
+                  class="text-button"
+                  type="button"
+                  title="Editar producto"
+                  aria-label="Editar producto"
+                  @click="startEditProduct(product)"
+                >
+                  <Pencil :size="13" /> Editar
+                </button>
+              </td>
             </tr>
             <tr v-if="!products.length">
-              <td colspan="4" class="table-empty">No hay productos para mostrar.</td>
+              <td colspan="5" class="table-empty">No hay productos para mostrar.</td>
             </tr>
           </tbody>
         </table>

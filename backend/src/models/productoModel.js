@@ -100,9 +100,21 @@ async function create({ id_categoria, nombre, descripcion = null, precio, stock,
   return formatProductRow(result.rows[0]);
 }
 
+async function update(id, { id_categoria, nombre, descripcion = null, precio, stock, imagen_url = null }) {
+  const sql = `
+    UPDATE producto
+    SET id_categoria = $1, nombre = $2, descripcion = $3, precio = $4, stock = $5, imagen_url = $6
+    WHERE id_producto = $7
+    RETURNING id_producto, id_categoria, nombre, descripcion, precio, stock, imagen_url
+  `;
+  const result = await query(sql, [id_categoria, nombre, descripcion, precio, stock, imagen_url, id]);
+  return formatProductRow(result.rows[0]);
+}
+
 module.exports = {
   findAll,
   countAll,
   findById,
   create,
+  update,
 };

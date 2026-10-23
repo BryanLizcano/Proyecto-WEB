@@ -51,8 +51,32 @@ async function createProduct(data) {
   };
 }
 
+async function updateProduct(id, data) {
+  const existingProduct = await productoModel.findById(id);
+  if (!existingProduct) {
+    throw ApiError.notFound('El recurso solicitado no fue encontrado en el servidor.', 'NOT_FOUND');
+  }
+
+  const category = await findCategoryById(data.id_categoria);
+  if (!category) {
+    throw ApiError.unprocessable('Errores de validación en los campos del formulario.', [
+      {
+        field: 'id_categoria',
+        message: `La categoría con ID ${data.id_categoria} no existe.`,
+      },
+    ]);
+  }
+
+  const updated = await productoModel.update(id, data);
+  return {
+    ...updated,
+    categoria_nombre: category.nombre,
+  };
+}
+
 module.exports = {
   getProducts,
   getProductById,
   createProduct,
+  updateProduct,
 };
