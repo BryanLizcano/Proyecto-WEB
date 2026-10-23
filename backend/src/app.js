@@ -1,6 +1,7 @@
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const env = require('./config/env');
 const setupSwagger = require('./config/swagger');
 const apiV1Routes = require('./routes/index');
@@ -28,6 +29,7 @@ app.use(
 );
 
 app.use(express.json({ limit: '10kb' }));
+app.use(cookieParser(env.sessionSecret));
 
 setupSwagger(app);
 

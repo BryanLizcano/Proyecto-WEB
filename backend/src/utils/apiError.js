@@ -11,6 +11,14 @@ class ApiError extends Error {
     return new ApiError(400, code, message, details);
   }
 
+  static unauthorized(message = 'No autorizado. Se requiere iniciar sesión como administrador.', code = 'UNAUTHORIZED') {
+    return new ApiError(401, code, message);
+  }
+
+  static forbidden(message = 'Token CSRF faltante o inválido.', code = 'CSRF_TOKEN_INVALID') {
+    return new ApiError(403, code, message);
+  }
+
   static notFound(message = 'El recurso solicitado no fue encontrado en el servidor.', code = 'NOT_FOUND') {
     return new ApiError(404, code, message);
   }

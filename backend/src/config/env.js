@@ -10,6 +10,7 @@ if (fs.existsSync(envPath)) {
 const env = {
   port: parseInt(process.env.PORT, 10) || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
+  sessionSecret: process.env.SESSION_SECRET || 'ritmo_store_super_secure_secret_key_default',
   corsOrigins: process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim())
     : ['http://localhost:5173'],
