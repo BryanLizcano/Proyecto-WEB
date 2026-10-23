@@ -28,8 +28,18 @@ async function createCategory(req, res, next) {
   }
 }
 
+async function updateCategory(req, res, next) {
+  try {
+    const updatedCategory = await categoryService.updateCategory(req.params.id, req.body);
+    return sendSuccess(res, updatedCategory, 200);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   getCategories,
   getCategoryById,
   createCategory,
+  updateCategory,
 };

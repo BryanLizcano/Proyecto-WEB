@@ -55,7 +55,6 @@ describe('Endpoints de Categorías (/api/v1/categorias)', () => {
     });
 
     it('debe rechazar con 403 si el token CSRF falta o no coincide con la cookie', async () => {
-      // Mock para la consulta de auth del administrador
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
 
       const res = await request(app)
@@ -70,11 +69,8 @@ describe('Endpoints de Categorías (/api/v1/categorias)', () => {
     });
 
     it('debe crear una categoría válida y responder 201 cuando está autenticado y con token CSRF válido', async () => {
-      // 1. Consulta de autenticación
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
-      // 2. Consulta de duplicados findByName
       query.mockResolvedValueOnce({ rows: [] });
-      // 3. Inserción de la nueva categoría
       const nuevaCategoria = {
         id_categoria: 3,
         nombre: 'Accesorios',
@@ -111,9 +107,7 @@ describe('Endpoints de Categorías (/api/v1/categorias)', () => {
     });
 
     it('debe responder 409 si el nombre de la categoría ya existe', async () => {
-      // 1. Consulta de autenticación
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
-      // 2. Consulta de duplicados encuentra registro
       query.mockResolvedValueOnce({
         rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo' }],
       });
@@ -165,6 +159,186 @@ describe('Endpoints de Categorías (/api/v1/categorias)', () => {
       expect(res.status).toBe(404);
       expect(res.body.status).toBe('error');
       expect(res.body.code).toBe('NOT_FOUND');
+    });
+  });
+
+  describe('PUT /api/v1/categorias/:id (HU-03)', () => {
+    it('debe rechazar con 401 si no hay sesión de administrador activa', async () => {
+      const res = await request(app)
+        .put('/api/v1/categorias/1')
+        .set('Cookie', 'XSRF-TOKEN=valid-csrf-token')
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({ nombre: 'Calzado Pro' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.code).toBe('UNAUTHORIZED');
+    });
+
+    it('debe rechazar con 403 si el token CSRF es inválido o no coincide', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .put('/api/v1/categorias/1')
+        .set('Cookie', 'admin_session=1; XSRF-TOKEN=valid-csrf-token')
+        .set('X-CSRF-Token', 'token-invalido')
+        .send({ nombre: 'Calzado Pro' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('CSRF_TOKEN_INVALID');
+    });
+
+    it('debe responder 400 si el id no es un número entero positivo válido', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .put('/api/v1/categorias/abc')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({ nombre: 'Calzado Pro' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('BAD_REQUEST');
+    });
+
+    it('debe responder 422 si el nombre está vacío o supera 100 caracteres', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .put('/api/v1/categorias/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({ nombre: '   ', descripcion: 'Descripción válida' });
+
+      expect(res.status).toBe(422);
+      expect(res.body.code).toBe('UNPROCESSABLE_ENTITY');
+      expect(Array.isArray(res.body.details)).toBe(true);
+      expect(res.body.details[0].field).toBe('nombre');
+    });
+
+    it('debe responder 404 si la categoría no existe', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({ rows: [] }); // findCategoryById retorna vacío
+
+      const res = await request(app)
+        .put('/api/v1/categorias/999')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({ nombre: 'Calzado Pro', descripcion: 'Descripción' });
+
+      expect(res.status).toBe(404);
+      expect(res.body.code).toBe('NOT_FOUND');
+    });
+
+    it('debe responder 409 si el nuevo nombre colisiona con otra categoría distinta', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      // findCategoryById encuentra la categoría actual (id 1)
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Calzado Original' }],
+      });
+      // Verificación de duplicado encuentra que la categoría con id 2 ya tiene ese nombre
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 2 }],
+      });
+
+      const res = await request(app)
+        .put('/api/v1/categorias/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({ nombre: 'Ropa Deportiva' });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('DUPLICATE_CATEGORY_NAME');
+    });
+
+    it('debe actualizar la categoría satisfactoriamente y responder 200', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      // findCategoryById encuentra la categoría actual
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo', descripcion: 'Zapatos' }],
+      });
+      // Verificación de duplicado no encuentra colisiones
+      query.mockResolvedValueOnce({ rows: [] });
+      // Inserción / Actualización retorna la fila actualizada
+      const categoriaActualizada = {
+        id_categoria: 1,
+        nombre: 'Calzado Profesional y Deportivo',
+        descripcion: 'Calzado para atletas y corredores.',
+      };
+      query.mockResolvedValueOnce({ rows: [categoriaActualizada] });
+
+      const res = await request(app)
+        .put('/api/v1/categorias/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          nombre: 'Calzado Profesional y Deportivo',
+          descripcion: 'Calzado para atletas y corredores.',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.data).toEqual(categoriaActualizada);
+    });
+
+    it('debe permitir actualizar la descripción manteniendo el mismo nombre sin conflicto 409', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo', descripcion: 'Descripción vieja' }],
+      });
+      // La consulta de duplicados excluye id_categoria = 1, por lo que no hay colisión
+      query.mockResolvedValueOnce({ rows: [] });
+      const categoriaActualizada = {
+        id_categoria: 1,
+        nombre: 'Calzado Deportivo',
+        descripcion: 'Nueva descripción actualizada',
+      };
+      query.mockResolvedValueOnce({ rows: [categoriaActualizada] });
+
+      const res = await request(app)
+        .put('/api/v1/categorias/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          nombre: 'Calzado Deportivo',
+          descripcion: 'Nueva descripción actualizada',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.data.descripcion).toBe('Nueva descripción actualizada');
+    });
+
+    it('debe sanitizar contra XSS en nombre y descripción al actualizar', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Antigua', descripcion: 'Antigua' }],
+      });
+      query.mockResolvedValueOnce({ rows: [] });
+      query.mockImplementationOnce((sql, params) => {
+        return Promise.resolve({
+          rows: [{
+            id_categoria: 1,
+            nombre: params[0],
+            descripcion: params[1],
+          }],
+        });
+      });
+
+      const res = await request(app)
+        .put('/api/v1/categorias/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({
+          nombre: '<script>alert("XSS")</script>',
+          descripcion: '<b>Negrita</b>',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.data.nombre).not.toContain('<script>');
+      expect(res.body.data.nombre).toContain('&lt;script&gt;');
+      expect(res.body.data.descripcion).not.toContain('<b>');
+      expect(res.body.data.descripcion).toContain('&lt;b&gt;');
     });
   });
 });

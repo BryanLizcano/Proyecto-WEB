@@ -24,7 +24,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **HU-01** | Listar y consultar detalle de categorías | EP-01 | RF-01 | S2 (Sem 11) | 2 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-02** | Crear una nueva categoría de productos | EP-01 | RF-01 | S2 (Sem 11) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
-| **HU-03** | Editar una categoría existente | EP-01 | RF-01 | S3 (Sem 12) | 3 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
+| **HU-03** | Editar una categoría existente | EP-01 | RF-01 | S3 (Sem 12) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-04** | Eliminar una categoría sin productos asociados | EP-01 | RF-01 | S3 (Sem 12) | 3 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
 | **HU-05** | Registrar un nuevo producto con stock e imagen | EP-02 | RF-02 | S2 (Sem 11) | 5 | `[x]` Hecho *(sin Auth)* | `[~]` Bloqueado CSRF | **En progreso** |
 | **HU-06** | Editar datos, precio y stock de un producto | EP-02 | RF-02 | S3 (Sem 12) | 5 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
@@ -75,7 +75,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
   1. Si la categoría no existe, retorna `404 Not Found`.
   2. Si el nuevo `nombre` colisiona con otra categoría distinta, retorna `409 Conflict` (`DUPLICATE_CATEGORY_NAME`).
   3. En el panel administrativo, permite seleccionar una categoría de la tabla, editar sus campos y guardar cambios.
-* **Estado:** ❌ **Por hacer** (Falta en Backend y Frontend).
+* **Estado:** ✅ **Completado** (Backend en [`categoryRoutes.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/routes/categoryRoutes.js) con `authMiddleware` y `csrfMiddleware`; Frontend con modo edición en [`AdminDashboardView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminDashboardView.vue) y [`catalog.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/services/catalog.js); validado con 9 pruebas automatizadas).
 
 #### **HU-04: Eliminar una categoría sin productos asociados**
 * **Rol:** Administrador

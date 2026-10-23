@@ -183,6 +183,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .category-row > span { color: $coral; font-family: $font-display; font-size: 20px; }
 .category-row h3 { margin: 0 0 4px; font-size: 11px; }
 .category-row p, .category-row small { margin: 0; color: $muted; font-size: 9px; }
+.category-row-aside { display: flex; align-items: center; gap: 12px; .text-button { display: inline-flex; align-items: center; gap: 4px; } }
 .not-found { min-height: 65vh; display: flex; flex-direction: column; align-items: start; justify-content: center; }
 .not-found h1 { max-width: 650px; margin: 0 0 24px; font-family: $font-display; font-size: 56px; font-weight: 400; }
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }

@@ -57,9 +57,39 @@ async function createCategory({ nombre, descripcion = null }) {
   return result.rows[0];
 }
 
+/**
+ * Actualiza una categoría existente validando su existencia y que el nombre no colisione con otra.
+ * @param {number} id
+ * @param {{ nombre: string, descripcion?: string|null }} param1
+ * @returns {Promise<{id_categoria: number, nombre: string, descripcion: string|null}>}
+ */
+async function updateCategory(id, { nombre, descripcion = null }) {
+  const currentCategory = await findCategoryById(id);
+  if (!currentCategory) {
+    throw ApiError.notFound('Categoría no encontrada.', 'NOT_FOUND');
+  }
+
+  const checkSql = 'SELECT id_categoria FROM categoria WHERE LOWER(nombre) = LOWER($1) AND id_categoria != $2';
+  const duplicate = await query(checkSql, [nombre, id]);
+
+  if (duplicate.rows.length > 0) {
+    throw ApiError.conflict('Ya existe una categoría con el nombre especificado.', 'DUPLICATE_CATEGORY_NAME');
+  }
+
+  const updateSql = `
+    UPDATE categoria
+    SET nombre = $1, descripcion = $2
+    WHERE id_categoria = $3
+    RETURNING id_categoria, nombre, descripcion
+  `;
+  const result = await query(updateSql, [nombre, descripcion, id]);
+  return result.rows[0];
+}
+
 module.exports = {
   getAllCategories,
   findCategoryById,
   getCategoryById,
   createCategory,
+  updateCategory,
 };
