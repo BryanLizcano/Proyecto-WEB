@@ -44,7 +44,7 @@ function validateProductoInput(req, res, next) {
   const details = [];
 
   const numCategoria = parseInt(id_categoria, 10);
-  if (id_categoria === undefined || Number.isNaN(numCategoria) || numCategoria <= 0) {
+  if (id_categoria === undefined || Number.isNaN(numCategoria) || numCategoria <= 0 || !Number.isInteger(Number(id_categoria))) {
     details.push({ field: 'id_categoria', message: 'El id_categoria debe ser un entero positivo.' });
   }
 
@@ -52,6 +52,10 @@ function validateProductoInput(req, res, next) {
     details.push({ field: 'nombre', message: 'El nombre del producto es requerido.' });
   } else if (!validator.isLength(nombre.trim(), { min: 1, max: 150 })) {
     details.push({ field: 'nombre', message: 'El nombre no puede exceder 150 caracteres.' });
+  }
+
+  if (descripcion !== undefined && descripcion !== null && typeof descripcion !== 'string') {
+    details.push({ field: 'descripcion', message: 'La descripción debe ser una cadena de texto.' });
   }
 
   const numPrecio = Number(precio);
@@ -64,8 +68,16 @@ function validateProductoInput(req, res, next) {
     details.push({ field: 'stock', message: 'El stock no puede ser un valor negativo.' });
   }
 
-  if (imagen_url && typeof imagen_url === 'string' && imagen_url.length > 255) {
-    details.push({ field: 'imagen_url', message: 'La URL de la imagen no puede exceder 255 caracteres.' });
+  if (imagen_url !== undefined && imagen_url !== null) {
+    if (typeof imagen_url !== 'string') {
+      details.push({ field: 'imagen_url', message: 'La URL de la imagen debe ser una cadena de texto.' });
+    } else if (imagen_url.trim().length > 0) {
+      if (imagen_url.trim().length > 255) {
+        details.push({ field: 'imagen_url', message: 'La URL de la imagen no puede exceder 255 caracteres.' });
+      } else if (!validator.isURL(imagen_url.trim(), { protocols: ['http', 'https'], require_protocol: true })) {
+        details.push({ field: 'imagen_url', message: 'La URL de la imagen debe ser una URI válida con protocolo http o https.' });
+      }
+    }
   }
 
   if (details.length > 0) {
@@ -77,7 +89,7 @@ function validateProductoInput(req, res, next) {
   req.body.descripcion = descripcion ? validator.escape(descripcion.trim()) : null;
   req.body.precio = numPrecio;
   req.body.stock = numStock;
-  req.body.imagen_url = imagen_url ? validator.trim(imagen_url) : null;
+  req.body.imagen_url = (imagen_url && typeof imagen_url === 'string' && imagen_url.trim().length > 0) ? validator.trim(imagen_url) : null;
 
   return next();
 }

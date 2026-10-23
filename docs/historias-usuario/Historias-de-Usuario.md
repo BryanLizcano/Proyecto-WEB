@@ -98,7 +98,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 * **Criterios de Aceptación:**
   1. Valida `id_categoria` existente (`422` si no existe), `nombre` obligatorio (`<= 150` chars), `precio >= 0`, `stock >= 0` entero e `imagen_url` con formato URI válido.
   2. Sanitiza entradas de texto contra XSS y retorna `201 Created`.
-* **Estado:** 🟡 **En progreso** (Backend listo en [`productService.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/services/productService.js) sin middleware Auth/CSRF; Frontend listo en [`AdminDashboardView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminDashboardView.vue) pero bloqueado por `/auth/csrf`).
+* **Estado:** ✅ **Completado** (Backend en [`productRoutes.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/routes/productRoutes.js) protegido con `authMiddleware` y `csrfMiddleware`; validaciones semánticas completas y sanitización XSS en [`validatorMiddleware.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/middleware/validatorMiddleware.js); Frontend integrado en [`AdminDashboardView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminDashboardView.vue) y [`catalog.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/services/catalog.js); suite de pruebas automatizadas en [`products.test.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/tests/products.test.js)).
 
 #### **HU-06: Editar datos, precio y stock de un producto**
 * **Rol:** Administrador

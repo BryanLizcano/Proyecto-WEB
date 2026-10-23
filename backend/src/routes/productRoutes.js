@@ -4,6 +4,8 @@ const {
   getProductById,
   createProduct,
 } = require('../controllers/productController');
+const authMiddleware = require('../middleware/authMiddleware');
+const csrfMiddleware = require('../middleware/csrfMiddleware');
 const {
   validateId,
   validateProductoInput,
@@ -14,8 +16,6 @@ const router = Router();
 
 router.get('/', validateProductQueryParams, getProducts);
 router.get('/:id', validateId, getProductById);
-
-// TODO(auth): Proteger con middleware de autenticación admin_session y validación X-CSRF-Token en Semana 13-14
-router.post('/', validateProductoInput, createProduct);
+router.post('/', authMiddleware, csrfMiddleware, validateProductoInput, createProduct);
 
 module.exports = router;
