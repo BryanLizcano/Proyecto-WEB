@@ -6,6 +6,8 @@ La fuente de verdad del contrato de la aplicación reside en la carpeta [`docs/`
 - Contrato REST: [`docs/openapi.yaml`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/docs/openapi.yaml)
 - Esquema DDL y Constraints: [`docs/schema.sql`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/docs/schema.sql)
 - Modelo Entidad-Relación: [`docs/modelo-datos.md`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/docs/modelo-datos.md)
+- Historias de Usuario y Criterios de Aceptación (para agentes): [`docs/historias-usuario/Historias-de-Usuario.md`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/docs/historias-usuario/Historias-de-Usuario.md)
+- Product Backlog en Excel (Épicas, HU, Sprints y Tareas): [`docs/backlog/Backlog-Tienda-Modular.xlsx`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/docs/backlog/Backlog-Tienda-Modular.xlsx)
 
 ---
 
@@ -20,7 +22,11 @@ Proyecto WEB/
 ├── docs/                       # Contratos, esquemas y arquitectura (intocables sin aprobación)
 │   ├── openapi.yaml
 │   ├── schema.sql
-│   └── modelo-datos.md
+│   ├── modelo-datos.md
+│   ├── backlog/
+│   │   └── Backlog-Tienda-Modular.xlsx
+│   └── historias-usuario/
+│       └── Historias-de-Usuario.md
 │
 ├── backend/                    # Proyecto Node.js + Express (Bryan Lizcano)
 │   ├── .env.example
