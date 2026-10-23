@@ -7,6 +7,7 @@ import {
   createCategory,
   createProduct,
   deleteCategory,
+  deleteProduct,
   getCategories,
   getProducts,
   updateCategory,
@@ -126,6 +127,26 @@ async function removeCategory(category) {
   }
 }
 
+async function removeProduct(product) {
+  const confirmed = window.confirm(
+    `¿Estás seguro de que deseas eliminar el producto "${product.nombre}"? Esta acción no se puede deshacer.`
+  )
+  if (!confirmed) return
+
+  notice.value = ''
+  errorMessage.value = ''
+  try {
+    const response = await deleteProduct(product.id_producto)
+    notice.value = response.message || `Producto "${product.nombre}" eliminado exitosamente.`
+    if (editingProduct.value?.id_producto === product.id_producto) {
+      cancelProductForm()
+    }
+    await loadDashboard()
+  } catch (error) {
+    errorMessage.value = getApiError(error)
+  }
+}
+
 async function submitProduct() {
   saving.value = true
   notice.value = ''
@@ -204,7 +225,7 @@ onMounted(loadDashboard)
             type="button"
             @click="activeTab = 'products'"
           >
-            <PackagePlus :size="17" /> Productos
+            Productos
           </button>
           <button
             class="admin-tab"
@@ -214,17 +235,30 @@ onMounted(loadDashboard)
             type="button"
             @click="activeTab = 'categories'"
           >
-            <Tags :size="17" /> Categorías
+            Categorías
           </button>
         </div>
 
-        <button
-          class="button button-dark"
-          type="button"
-          @click="activeTab === 'products' ? (showProductForm ? cancelProductForm() : (showProductForm = true)) : (showCategoryForm ? cancelCategoryForm() : (showCategoryForm = true))"
-        >
-          <Plus :size="17" /> Añadir {{ activeTab === 'products' ? 'producto' : 'categoría' }}
-        </button>
+        <div class="admin-workspace-actions">
+          <button
+            v-if="activeTab === 'products'"
+            class="button button-accent"
+            type="button"
+            @click="editingProduct ? cancelProductForm() : (showProductForm = !showProductForm)"
+          >
+            <PackagePlus :size="16" />
+            {{ showProductForm ? 'Cerrar formulario' : 'Nuevo producto' }}
+          </button>
+          <button
+            v-else
+            class="button button-accent"
+            type="button"
+            @click="editingCategory ? cancelCategoryForm() : (showCategoryForm = !showCategoryForm)"
+          >
+            <Tags :size="16" />
+            {{ showCategoryForm ? 'Cerrar formulario' : 'Nueva categoría' }}
+          </button>
+        </div>
       </div>
 
       <form v-if="showProductForm && activeTab === 'products'" class="admin-form" @submit.prevent="submitProduct">
@@ -234,17 +268,17 @@ onMounted(loadDashboard)
         </div>
         <div class="form-grid">
           <label class="field-label">
-            Nombre
-            <input v-model.trim="productForm.nombre" class="text-input" required maxlength="150" />
-          </label>
-          <label class="field-label">
             Categoría
             <select v-model="productForm.id_categoria" class="text-input" required>
-              <option disabled value="">Selecciona categoría</option>
-              <option v-for="category in categories" :key="category.id_categoria" :value="String(category.id_categoria)">
-                {{ category.nombre }}
+              <option disabled value="">Selecciona una categoría</option>
+              <option v-for="cat in categories" :key="cat.id_categoria" :value="String(cat.id_categoria)">
+                {{ cat.nombre }}
               </option>
             </select>
+          </label>
+          <label class="field-label">
+            Nombre del producto
+            <input v-model.trim="productForm.nombre" class="text-input" maxlength="150" required />
           </label>
           <label class="field-label">
             Precio
@@ -316,6 +350,16 @@ onMounted(loadDashboard)
                   @click="startEditProduct(product)"
                 >
                   <Pencil :size="13" /> Editar
+                </button>
+                <button
+                  class="text-button text-button-danger"
+                  type="button"
+                  title="Eliminar producto"
+                  aria-label="Eliminar producto"
+                  style="margin-left: 0.5rem;"
+                  @click="removeProduct(product)"
+                >
+                  <Trash2 :size="13" /> Eliminar
                 </button>
               </td>
             </tr>

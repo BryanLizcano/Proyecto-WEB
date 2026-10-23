@@ -4,6 +4,7 @@ const {
   getProductById,
   createProduct,
   updateProduct,
+  deleteProduct,
 } = require('../controllers/productController');
 const authMiddleware = require('../middleware/authMiddleware');
 const csrfMiddleware = require('../middleware/csrfMiddleware');
@@ -19,5 +20,6 @@ router.get('/', validateProductQueryParams, getProducts);
 router.get('/:id', validateId, getProductById);
 router.post('/', authMiddleware, csrfMiddleware, validateProductoInput, createProduct);
 router.put('/:id', authMiddleware, csrfMiddleware, validateId, validateProductoInput, updateProduct);
+router.delete('/:id', authMiddleware, csrfMiddleware, validateId, deleteProduct);
 
 module.exports = router;

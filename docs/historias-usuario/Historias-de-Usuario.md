@@ -117,7 +117,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 * **Criterios de Aceptación:**
   1. Si el producto aparece en `detalle_pedido`, la BD bloquea el borrado (`ON DELETE RESTRICT`) y la API retorna `409 Conflict` (`PRODUCT_HAS_ORDERS`).
   2. Si no tiene ventas registradas, se elimina y retorna `200 OK`.
-* **Estado:** ❌ **Por hacer** (Falta en Backend y Frontend).
+* **Estado:** ✅ **Completado** (Backend en [productRoutes.js](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/routes/productRoutes.js) y [productService.js](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/services/productService.js) protegido con authMiddleware y csrfMiddleware; validación de clave foránea y captura de error SQL 23503 con código PRODUCT_HAS_ORDERS; Frontend con botón de eliminación, diálogo de confirmación y feedback reactivo en [AdminDashboardView.vue](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminDashboardView.vue) y [catalog.js](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/services/catalog.js); suite de pruebas automatizadas en [products.test.js](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/tests/products.test.js)).
 
 ---
 

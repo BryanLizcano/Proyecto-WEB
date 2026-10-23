@@ -37,9 +37,22 @@ async function updateProduct(req, res, next) {
   }
 }
 
+async function deleteProduct(req, res, next) {
+  try {
+    await productService.deleteProduct(req.params.id);
+    return res.status(200).json({
+      status: 'success',
+      message: 'Producto eliminado exitosamente.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   getProducts,
   getProductById,
   createProduct,
   updateProduct,
+  deleteProduct,
 };

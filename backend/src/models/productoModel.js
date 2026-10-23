@@ -111,10 +111,16 @@ async function update(id, { id_categoria, nombre, descripcion = null, precio, st
   return formatProductRow(result.rows[0]);
 }
 
+async function deleteById(id) {
+  const sql = 'DELETE FROM producto WHERE id_producto = $1';
+  await query(sql, [id]);
+}
+
 module.exports = {
   findAll,
   countAll,
   findById,
   create,
   update,
+  deleteById,
 };

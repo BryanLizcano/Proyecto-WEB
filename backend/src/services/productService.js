@@ -1,3 +1,4 @@
+const { query } = require('../config/db');
 const productoModel = require('../models/productoModel');
 const { findCategoryById } = require('./categoryService');
 const ApiError = require('../utils/apiError');
@@ -74,9 +75,45 @@ async function updateProduct(id, data) {
   };
 }
 
+/**
+ * Elimina un producto del catálogo siempre que no figure en pedidos históricos.
+ * @param {number} id
+ * @returns {Promise<void>}
+ */
+async function deleteProduct(id) {
+  const existingProduct = await productoModel.findById(id);
+  if (!existingProduct) {
+    throw ApiError.notFound('El recurso solicitado no fue encontrado en el servidor.', 'NOT_FOUND');
+  }
+
+  const countSql = 'SELECT COUNT(*)::int AS total FROM detalle_pedido WHERE id_producto = $1';
+  const countResult = await query(countSql, [id]);
+
+  if (countResult.rows[0]?.total > 0) {
+    throw ApiError.conflict(
+      'No es posible eliminar el producto porque existen pedidos registrados asociados.',
+      'PRODUCT_HAS_ORDERS'
+    );
+  }
+
+  try {
+    await productoModel.deleteById(id);
+  } catch (error) {
+    // 23503 corresponde a violación de restricción de clave foránea fk_detalle_pedido_producto (ON DELETE RESTRICT)
+    if (error.code === '23503') {
+      throw ApiError.conflict(
+        'No es posible eliminar el producto porque existen pedidos registrados asociados.',
+        'PRODUCT_HAS_ORDERS'
+      );
+    }
+    throw error;
+  }
+}
+
 module.exports = {
   getProducts,
   getProductById,
   createProduct,
   updateProduct,
+  deleteProduct,
 };
