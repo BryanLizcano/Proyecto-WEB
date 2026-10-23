@@ -73,7 +73,7 @@ async function updateCategory(id, { nombre, descripcion = null }) {
   const duplicate = await query(checkSql, [nombre, id]);
 
   if (duplicate.rows.length > 0) {
-    throw ApiError.conflict('Ya existe una categoría con el nombre especificado.', 'DUPLICATE_CATEGORY_NAME');
+    throw ApiError.conflict('Ya existe otra categoría con el nombre especificado.', 'DUPLICATE_CATEGORY_NAME');
   }
 
   const updateSql = `
@@ -86,10 +86,47 @@ async function updateCategory(id, { nombre, descripcion = null }) {
   return result.rows[0];
 }
 
+/**
+ * Elimina una categoría del catálogo siempre que no posea productos asociados.
+ * @param {number} id
+ * @returns {Promise<void>}
+ */
+async function deleteCategory(id) {
+  const currentCategory = await findCategoryById(id);
+  if (!currentCategory) {
+    throw ApiError.notFound('Categoría no encontrada.', 'NOT_FOUND');
+  }
+
+  const countSql = 'SELECT COUNT(*)::int AS total FROM producto WHERE id_categoria = $1';
+  const countResult = await query(countSql, [id]);
+
+  if (countResult.rows[0]?.total > 0) {
+    throw ApiError.conflict(
+      'No se puede eliminar la categoría porque contiene productos asociados.',
+      'CATEGORY_HAS_PRODUCTS'
+    );
+  }
+
+  try {
+    const deleteSql = 'DELETE FROM categoria WHERE id_categoria = $1';
+    await query(deleteSql, [id]);
+  } catch (error) {
+    // 23503 corresponde a violación de restricción de clave foránea (ON DELETE RESTRICT)
+    if (error.code === '23503') {
+      throw ApiError.conflict(
+        'No se puede eliminar la categoría porque contiene productos asociados.',
+        'CATEGORY_HAS_PRODUCTS'
+      );
+    }
+    throw error;
+  }
+}
+
 module.exports = {
   getAllCategories,
   findCategoryById,
   getCategoryById,
   createCategory,
   updateCategory,
+  deleteCategory,
 };

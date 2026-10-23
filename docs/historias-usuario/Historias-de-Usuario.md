@@ -25,7 +25,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 | **HU-01** | Listar y consultar detalle de categorías | EP-01 | RF-01 | S2 (Sem 11) | 2 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-02** | Crear una nueva categoría de productos | EP-01 | RF-01 | S2 (Sem 11) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-03** | Editar una categoría existente | EP-01 | RF-01 | S3 (Sem 12) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
-| **HU-04** | Eliminar una categoría sin productos asociados | EP-01 | RF-01 | S3 (Sem 12) | 3 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
+| **HU-04** | Eliminar una categoría sin productos asociados | EP-01 | RF-01 | S3 (Sem 12) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-05** | Registrar un nuevo producto con stock e imagen | EP-02 | RF-02 | S2 (Sem 11) | 5 | `[x]` Hecho *(sin Auth)* | `[~]` Bloqueado CSRF | **En progreso** |
 | **HU-06** | Editar datos, precio y stock de un producto | EP-02 | RF-02 | S3 (Sem 12) | 5 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
 | **HU-07** | Eliminar un producto sin pedidos asociados | EP-02 | RF-02 | S3 (Sem 12) | 3 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
@@ -85,7 +85,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
   1. Si la categoría tiene productos asociados, PostgreSQL aplica `ON DELETE RESTRICT` y el backend responde `409 Conflict` (`CATEGORY_HAS_PRODUCTS`).
   2. Si no tiene productos asociados, la elimina y retorna `200 OK`.
   3. El frontend solicita confirmación antes de eliminar y muestra mensaje claro si ocurre el conflicto `409`.
-* **Estado:** ❌ **Por hacer** (Falta en Backend y Frontend).
+* **Estado:** ✅ **Completado** (Backend en [`categoryRoutes.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/routes/categoryRoutes.js) y [`categoryService.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/services/categoryService.js) protegido con `authMiddleware` y `csrfMiddleware`; Frontend con modal de confirmación y manejo de error 409 en [`AdminDashboardView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminDashboardView.vue) y [`catalog.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/services/catalog.js); validado con 8 pruebas automatizadas específicas).
 
 ---
 

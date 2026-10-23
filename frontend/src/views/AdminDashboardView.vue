@@ -1,9 +1,16 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ArrowUpRight, LogOut, PackagePlus, Pencil, Plus, RefreshCw, Tags } from '@lucide/vue'
+import { ArrowUpRight, LogOut, PackagePlus, Pencil, Plus, RefreshCw, Tags, Trash2 } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { getApiError } from '../services/api'
-import { createCategory, createProduct, getCategories, getProducts, updateCategory } from '../services/catalog'
+import {
+  createCategory,
+  createProduct,
+  deleteCategory,
+  getCategories,
+  getProducts,
+  updateCategory,
+} from '../services/catalog'
 import { useAuthStore } from '../stores/auth'
 import { formatCurrency } from '../utils/formatCurrency'
 
@@ -70,12 +77,38 @@ async function submitCategory() {
   }
 }
 
+async function removeCategory(category) {
+  const confirmed = window.confirm(
+    `¿Estás seguro de que deseas eliminar la categoría "${category.nombre}"? Esta acción no se puede deshacer.`
+  )
+  if (!confirmed) return
+
+  notice.value = ''
+  errorMessage.value = ''
+  try {
+    const response = await deleteCategory(category.id_categoria)
+    notice.value = response.message || `Categoría "${category.nombre}" eliminada exitosamente.`
+    if (editingCategory.value?.id_categoria === category.id_categoria) {
+      cancelCategoryForm()
+    }
+    await loadDashboard()
+  } catch (error) {
+    errorMessage.value = getApiError(error)
+  }
+}
+
 async function submitProduct() {
   saving.value = true
   notice.value = ''
   errorMessage.value = ''
   try {
-    await createProduct({ ...productForm.value, id_categoria: Number(productForm.value.id_categoria), precio: Number(productForm.value.precio), stock: Number(productForm.value.stock), imagen_url: productForm.value.imagen_url || null })
+    await createProduct({
+      ...productForm.value,
+      id_categoria: Number(productForm.value.id_categoria),
+      precio: Number(productForm.value.precio),
+      stock: Number(productForm.value.stock),
+      imagen_url: productForm.value.imagen_url || null,
+    })
     productForm.value = { id_categoria: String(categories.value[0]?.id_categoria || ''), nombre: '', descripcion: '', precio: '', stock: '', imagen_url: '' }
     showProductForm.value = false
     notice.value = 'Producto creado.'
@@ -152,7 +185,7 @@ onMounted(loadDashboard)
         <button
           class="button button-dark"
           type="button"
-          @click="activeTab === 'products' ? showProductForm = !showProductForm : (showCategoryForm ? cancelCategoryForm() : showCategoryForm = true)"
+          @click="activeTab === 'products' ? (showProductForm = !showProductForm) : (showCategoryForm ? cancelCategoryForm() : (showCategoryForm = true))"
         >
           <Plus :size="17" /> Añadir {{ activeTab === 'products' ? 'producto' : 'categoría' }}
         </button>
@@ -215,7 +248,7 @@ onMounted(loadDashboard)
           </label>
         </div>
         <button class="button button-accent" type="submit" :disabled="saving">
-          {{ saving ? 'Guardando...' : (editingCategory ? 'Guardar cambios' : 'Guardar categoría') }}
+          {{ saving ? 'Guardando...' : editingCategory ? 'Guardar cambios' : 'Guardar categoría' }}
           <ArrowUpRight :size="17" />
         </button>
       </form>
@@ -261,6 +294,15 @@ onMounted(loadDashboard)
               @click="startEditCategory(category)"
             >
               <Pencil :size="13" /> Editar
+            </button>
+            <button
+              class="text-button text-button-danger"
+              type="button"
+              title="Eliminar categoría"
+              aria-label="Eliminar categoría"
+              @click="removeCategory(category)"
+            >
+              <Trash2 :size="13" /> Eliminar
             </button>
           </div>
         </article>

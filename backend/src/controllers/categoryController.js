@@ -37,9 +37,22 @@ async function updateCategory(req, res, next) {
   }
 }
 
+async function deleteCategory(req, res, next) {
+  try {
+    await categoryService.deleteCategory(req.params.id);
+    return res.status(200).json({
+      status: 'success',
+      message: 'Categoría eliminada exitosamente.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   getCategories,
   getCategoryById,
   createCategory,
   updateCategory,
+  deleteCategory,
 };

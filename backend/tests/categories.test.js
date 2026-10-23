@@ -217,7 +217,7 @@ describe('Endpoints de Categorías (/api/v1/categorias)', () => {
 
     it('debe responder 404 si la categoría no existe', async () => {
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
-      query.mockResolvedValueOnce({ rows: [] }); // findCategoryById retorna vacío
+      query.mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
         .put('/api/v1/categorias/999')
@@ -231,11 +231,9 @@ describe('Endpoints de Categorías (/api/v1/categorias)', () => {
 
     it('debe responder 409 si el nuevo nombre colisiona con otra categoría distinta', async () => {
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
-      // findCategoryById encuentra la categoría actual (id 1)
       query.mockResolvedValueOnce({
         rows: [{ id_categoria: 1, nombre: 'Calzado Original' }],
       });
-      // Verificación de duplicado encuentra que la categoría con id 2 ya tiene ese nombre
       query.mockResolvedValueOnce({
         rows: [{ id_categoria: 2 }],
       });
@@ -252,13 +250,10 @@ describe('Endpoints de Categorías (/api/v1/categorias)', () => {
 
     it('debe actualizar la categoría satisfactoriamente y responder 200', async () => {
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
-      // findCategoryById encuentra la categoría actual
       query.mockResolvedValueOnce({
         rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo', descripcion: 'Zapatos' }],
       });
-      // Verificación de duplicado no encuentra colisiones
       query.mockResolvedValueOnce({ rows: [] });
-      // Inserción / Actualización retorna la fila actualizada
       const categoriaActualizada = {
         id_categoria: 1,
         nombre: 'Calzado Profesional y Deportivo',
@@ -285,7 +280,6 @@ describe('Endpoints de Categorías (/api/v1/categorias)', () => {
       query.mockResolvedValueOnce({
         rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo', descripcion: 'Descripción vieja' }],
       });
-      // La consulta de duplicados excluye id_categoria = 1, por lo que no hay colisión
       query.mockResolvedValueOnce({ rows: [] });
       const categoriaActualizada = {
         id_categoria: 1,
@@ -339,6 +333,150 @@ describe('Endpoints de Categorías (/api/v1/categorias)', () => {
       expect(res.body.data.nombre).toContain('&lt;script&gt;');
       expect(res.body.data.descripcion).not.toContain('<b>');
       expect(res.body.data.descripcion).toContain('&lt;b&gt;');
+    });
+  });
+
+  describe('DELETE /api/v1/categorias/:id (HU-04)', () => {
+    it('debe rechazar con 401 si no hay sesión de administrador activa', async () => {
+      const res = await request(app)
+        .delete('/api/v1/categorias/1')
+        .set('Cookie', 'XSRF-TOKEN=valid-csrf-token')
+        .set('X-CSRF-Token', validCsrfHeader);
+
+      expect(res.status).toBe(401);
+      expect(res.body.code).toBe('UNAUTHORIZED');
+    });
+
+    it('debe rechazar con 403 si el token CSRF es inválido o no coincide', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .delete('/api/v1/categorias/1')
+        .set('Cookie', 'admin_session=1; XSRF-TOKEN=valid-csrf-token')
+        .set('X-CSRF-Token', 'token-invalido');
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('CSRF_TOKEN_INVALID');
+    });
+
+    it('debe responder 400 si el id no es un número entero positivo válido', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const resText = await request(app)
+        .delete('/api/v1/categorias/abc')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader);
+
+      expect(resText.status).toBe(400);
+      expect(resText.body.code).toBe('BAD_REQUEST');
+
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      const resZero = await request(app)
+        .delete('/api/v1/categorias/0')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader);
+
+      expect(resZero.status).toBe(400);
+      expect(resZero.body.code).toBe('BAD_REQUEST');
+    });
+
+    it('debe responder 404 si la categoría no existe', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .delete('/api/v1/categorias/999')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader);
+
+      expect(res.status).toBe(404);
+      expect(res.body.code).toBe('NOT_FOUND');
+    });
+
+    it('debe responder 409 (CATEGORY_HAS_PRODUCTS) si la categoría contiene productos asociados', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo' }],
+      });
+      query.mockResolvedValueOnce({
+        rows: [{ total: 5 }],
+      });
+
+      const res = await request(app)
+        .delete('/api/v1/categorias/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader);
+
+      expect(res.status).toBe(409);
+      expect(res.body.status).toBe('error');
+      expect(res.body.code).toBe('CATEGORY_HAS_PRODUCTS');
+      expect(res.body.message).toContain('productos asociados');
+    });
+
+    it('debe responder 409 si ocurre violación de clave foránea 23503 en base de datos', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Calzado Deportivo' }],
+      });
+      query.mockResolvedValueOnce({
+        rows: [{ total: 0 }],
+      });
+      const fkError = new Error('update or delete on table "categoria" violates foreign key constraint');
+      fkError.code = '23503';
+      query.mockRejectedValueOnce(fkError);
+
+      const res = await request(app)
+        .delete('/api/v1/categorias/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader);
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('CATEGORY_HAS_PRODUCTS');
+    });
+
+    it('debe eliminar la categoría exitosamente y responder 200 si no tiene productos', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Categoría Vacía' }],
+      });
+      query.mockResolvedValueOnce({
+        rows: [{ total: 0 }],
+      });
+      query.mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .delete('/api/v1/categorias/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader);
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.message).toBe('Categoría eliminada exitosamente.');
+    });
+
+    it('debe responder 500 si ocurre un fallo inesperado de base de datos durante la eliminación', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({
+        rows: [{ id_categoria: 1, nombre: 'Categoría Vacía' }],
+      });
+      query.mockResolvedValueOnce({
+        rows: [{ total: 0 }],
+      });
+      const dbError = new Error('Database connection failure');
+      query.mockRejectedValueOnce(dbError);
+
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      const res = await request(app)
+        .delete('/api/v1/categorias/1')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader);
+
+      expect(res.status).toBe(500);
+      expect(res.body.status).toBe('error');
+      expect(res.body.code).toBe('INTERNAL_SERVER_ERROR');
+
+      consoleSpy.mockRestore();
     });
   });
 });

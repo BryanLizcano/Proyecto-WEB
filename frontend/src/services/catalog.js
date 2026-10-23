@@ -24,6 +24,10 @@ export async function updateCategory(id, payload) {
   const { data } = await api.put(`/categorias/${id}`, payload)
   return data.data
 }
+export async function deleteCategory(id) {
+  const { data } = await api.delete(`/categorias/${id}`)
+  return data
+}
 export async function createProduct(payload) {
   const { data } = await api.post('/productos', payload)
   return data.data
