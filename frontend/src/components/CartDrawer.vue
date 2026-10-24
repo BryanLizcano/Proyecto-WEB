@@ -1,17 +1,16 @@
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { ArrowLeft, ArrowUpRight, CheckCircle2, Minus, Plus, ShoppingBag, Trash2, X } from '@lucide/vue'
+import { ArrowLeft, ArrowUpRight, CheckCircle2, Lock, Minus, Plus, ShoppingBag, Trash2, X } from '@lucide/vue'
 import { useCartStore } from '../stores/cart'
-import { createOrder } from '../services/orders'
-import { getApiError } from '../services/api'
 import { formatCurrency } from '../utils/formatCurrency'
+import PaymentModal from './PaymentModal.vue'
 
 const cart = useCartStore()
 
 const mode = ref('cart') // 'cart' | 'checkout' | 'success'
 const customerName = ref('')
 const customerContact = ref('')
-const isSubmitting = ref(false)
+const showPaymentGateway = ref(false)
 const errorMessage = ref('')
 const confirmedOrder = ref(null)
 
@@ -21,10 +20,12 @@ function resetCheckout() {
   customerContact.value = ''
   errorMessage.value = ''
   confirmedOrder.value = null
+  showPaymentGateway.value = false
 }
 
 function closeDrawer() {
   cart.isOpen = false
+  showPaymentGateway.value = false
   if (mode.value === 'success') {
     resetCheckout()
   }
@@ -38,38 +39,28 @@ onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 watch(() => cart.isOpen, (open) => {
-  if (!open && mode.value === 'success') {
-    resetCheckout()
+  if (!open) {
+    showPaymentGateway.value = false
+    if (mode.value === 'success') {
+      resetCheckout()
+    }
   }
 })
 
-async function submitCheckout() {
+function submitCheckout() {
   if (!customerName.value.trim() || !customerContact.value.trim()) {
     errorMessage.value = 'Por favor completa todos los campos requeridos.'
     return
   }
 
-  isSubmitting.value = true
   errorMessage.value = ''
-  try {
-    const payload = {
-      nombre_cliente: customerName.value.trim(),
-      contacto_cliente: customerContact.value.trim(),
-      items: cart.items.map((item) => ({
-        id_producto: item.id_producto,
-        cantidad: item.cantidad,
-      })),
-    }
+  showPaymentGateway.value = true
+}
 
-    const order = await createOrder(payload)
-    confirmedOrder.value = order
-    cart.clearCart()
-    mode.value = 'success'
-  } catch (error) {
-    errorMessage.value = getApiError(error)
-  } finally {
-    isSubmitting.value = false
-  }
+function handlePaymentSuccess(data) {
+  confirmedOrder.value = data.order
+  cart.clearCart()
+  mode.value = 'success'
 }
 </script>
 
@@ -213,16 +204,15 @@ async function submitCheckout() {
                 </label>
 
                 <p class="checkout-disclaimer">
-                  Al confirmar tu compra, se reservará el inventario de tus productos y un asesor coordinará tu entrega.
+                  Al continuar, pasarás a la pasarela de pagos segura RITMO PAY para elegir tu medio de pago preferido y finalizar tu compra.
                 </p>
 
                 <button
                   class="button button-dark checkout-button"
                   type="submit"
-                  :disabled="isSubmitting"
                 >
-                  {{ isSubmitting ? 'Procesando compra...' : 'Confirmar pedido' }}
-                  <ArrowUpRight :size="17" />
+                  Continuar al pago seguro
+                  <Lock :size="15" />
                 </button>
               </form>
             </div>
@@ -268,6 +258,16 @@ async function submitCheckout() {
       </div>
     </Transition>
   </Teleport>
+
+  <PaymentModal
+    :is-open="showPaymentGateway"
+    :customer-name="customerName"
+    :customer-contact="customerContact"
+    :items="cart.items"
+    :total="cart.total"
+    @close="showPaymentGateway = false"
+    @success="handlePaymentSuccess"
+  />
 </template>
 
 <style scoped>
