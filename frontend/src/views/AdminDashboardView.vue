@@ -25,7 +25,7 @@ import {
   updateCategory,
   updateProduct,
 } from '../services/catalog'
-import { getOrder, getOrders } from '../services/orders'
+import { getOrder, getOrders, updateOrderStatus } from '../services/orders'
 import { useAuthStore } from '../stores/auth'
 import { formatCurrency } from '../utils/formatCurrency'
 
@@ -96,6 +96,32 @@ async function openOrderDetail(order) {
 
 function closeOrderDetail() {
   selectedOrder.value = null
+}
+
+const updatingStatusOrderId = ref(null)
+
+async function changeOrderStatus(orderId, newStatus) {
+  if (!newStatus) return
+  updatingStatusOrderId.value = orderId
+  errorMessage.value = ''
+  notice.value = ''
+  try {
+    const updatedOrder = await updateOrderStatus(orderId, newStatus)
+    notice.value = `Estado del pedido #${orderId} actualizado a "${updatedOrder.estado}" exitosamente.`
+
+    const idx = orders.value.findIndex((o) => o.id_pedido === orderId)
+    if (idx !== -1) {
+      orders.value[idx].estado = updatedOrder.estado
+    }
+
+    if (selectedOrder.value && selectedOrder.value.id_pedido === orderId) {
+      selectedOrder.value.estado = updatedOrder.estado
+    }
+  } catch (error) {
+    errorMessage.value = getApiError(error)
+  } finally {
+    updatingStatusOrderId.value = null
+  }
 }
 
 function formatOrderDate(dateStr) {
@@ -560,9 +586,20 @@ onMounted(loadDashboard)
                 <td>{{ order.contacto_cliente }}</td>
                 <td>{{ formatCurrency(order.total) }}</td>
                 <td>
-                  <span class="status-badge" :class="`status-${order.estado.toLowerCase()}`">
-                    {{ order.estado }}
-                  </span>
+                  <select
+                    class="status-select"
+                    :class="`status-${order.estado.toLowerCase()}`"
+                    :value="order.estado"
+                    :disabled="updatingStatusOrderId === order.id_pedido"
+                    aria-label="Cambiar estado del pedido"
+                    @change="changeOrderStatus(order.id_pedido, $event.target.value)"
+                  >
+                    <option value="PENDIENTE">PENDIENTE</option>
+                    <option value="CONFIRMADO">CONFIRMADO</option>
+                    <option value="EN_PREPARACION">EN_PREPARACION</option>
+                    <option value="COMPLETADO">COMPLETADO</option>
+                    <option value="CANCELADO">CANCELADO</option>
+                  </select>
                 </td>
                 <td style="text-align: right;">
                   <button
@@ -615,9 +652,20 @@ onMounted(loadDashboard)
               </div>
               <div class="order-info-col">
                 <span class="info-label">Estado actual</span>
-                <span class="status-badge" :class="`status-${selectedOrder.estado.toLowerCase()}`">
-                  {{ selectedOrder.estado }}
-                </span>
+                <select
+                  class="status-select"
+                  :class="`status-${selectedOrder.estado.toLowerCase()}`"
+                  :value="selectedOrder.estado"
+                  :disabled="updatingStatusOrderId === selectedOrder.id_pedido"
+                  aria-label="Cambiar estado en detalle"
+                  @change="changeOrderStatus(selectedOrder.id_pedido, $event.target.value)"
+                >
+                  <option value="PENDIENTE">PENDIENTE</option>
+                  <option value="CONFIRMADO">CONFIRMADO</option>
+                  <option value="EN_PREPARACION">EN_PREPARACION</option>
+                  <option value="COMPLETADO">COMPLETADO</option>
+                  <option value="CANCELADO">CANCELADO</option>
+                </select>
               </div>
             </div>
 
@@ -718,6 +766,23 @@ onMounted(loadDashboard)
   font-weight: 700;
   border-radius: 2px;
   text-transform: uppercase;
+}
+
+.status-select {
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.status-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .status-pendiente {

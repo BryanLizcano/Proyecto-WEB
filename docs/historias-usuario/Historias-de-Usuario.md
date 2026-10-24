@@ -39,7 +39,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 | **HU-15** | Iniciar y cerrar sesión como administrador | EP-05 | RF-05 | S4 (Sem 13) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-16** | Proteger operaciones mutables con token CSRF | EP-05 | RNF-03 | S5 (Sem 14) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-17** | Consultar historial y detalle de pedidos en el panel admin | EP-05 | RF-08 | S4 (Sem 13) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
-| **HU-18** | Actualizar el estado operativo de un pedido | EP-05 | RF-08 | S4 (Sem 13) | 3 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
+| **HU-18** | Actualizar el estado operativo de un pedido | EP-05 | RF-08 | S4 (Sem 13) | 3 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 
 ---
 
@@ -226,4 +226,4 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 * **Criterios de Aceptación:**
   1. Valida que `estado` pertenezca a los 5 valores permitidos (`422` en caso contrario).
   2. Retorna `200 OK` con el pedido actualizado y refleja el cambio en la tabla del panel administrativo.
-* **Estado:** ❌ **Por hacer** (Falta en Backend y Frontend).
+* **Estado:** ✅ **Completado** (Backend en [`orderRoutes.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/routes/orderRoutes.js) y [`orderService.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/services/orderService.js) protegido con `authMiddleware` y `csrfMiddleware`; validación de enum en [`validatorMiddleware.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/middleware/validatorMiddleware.js); Frontend interactivo con selector reactivo en tabla y modal de [`AdminDashboardView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminDashboardView.vue) y [`orders.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/services/orders.js); suite de pruebas automatizadas en [`orders.test.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/tests/orders.test.js)).

@@ -423,6 +423,45 @@ describe('Endpoints de Pedidos (/api/v1/pedidos)', () => {
       expect(res.status).toBe(401);
     });
 
+    it('debe retornar 403 si falta el token CSRF o no coincide', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .patch('/api/v1/pedidos/101/estado')
+        .set('Cookie', authCookie)
+        .send({ estado: 'CONFIRMADO' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('CSRF_TOKEN_INVALID');
+    });
+
+    it('debe retornar 400 si el id no es un número entero válido', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .patch('/api/v1/pedidos/invalido/estado')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({ estado: 'CONFIRMADO' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('BAD_REQUEST');
+    });
+
+    it('debe retornar 404 si el pedido a actualizar no existe', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({ rows: [] }); // No order found
+
+      const res = await request(app)
+        .patch('/api/v1/pedidos/999/estado')
+        .set('Cookie', authCookie)
+        .set('X-CSRF-Token', validCsrfHeader)
+        .send({ estado: 'CONFIRMADO' });
+
+      expect(res.status).toBe(404);
+      expect(res.body.code).toBe('NOT_FOUND');
+    });
+
     it('debe retornar 422 si el estado no es válido', async () => {
       query.mockResolvedValueOnce({ rows: [mockAdmin] });
 
