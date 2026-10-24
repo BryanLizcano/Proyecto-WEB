@@ -10,9 +10,9 @@ const route = useRoute()
 const router = useRouter()
 const categories = ref([])
 const products = ref([])
-const selectedCategory = ref(route.query.category || '')
-const searchInput = ref('')
-const query = ref('')
+const selectedCategory = ref(route.query.category ? String(route.query.category) : '')
+const searchInput = ref(typeof route.query.q === 'string' ? route.query.q : '')
+const query = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const page = ref(1)
 const meta = ref({ total: 0, totalPages: 0, limit: 12 })
 const loading = ref(true)
@@ -21,14 +21,24 @@ let requestId = 0
 const resultLabel = computed(() => `${meta.value.total} ${meta.value.total === 1 ? 'pieza' : 'piezas'}`)
 
 async function loadCategories() {
-  try { categories.value = await getCategories() } catch (error) { errorMessage.value = getApiError(error) }
+  try {
+    categories.value = await getCategories()
+  } catch (error) {
+    errorMessage.value = getApiError(error)
+  }
 }
+
 async function loadProducts() {
   const currentRequest = ++requestId
   loading.value = true
   errorMessage.value = ''
   try {
-    const response = await getProducts({ ...(selectedCategory.value ? { id_categoria: selectedCategory.value } : {}), ...(query.value ? { q: query.value } : {}), page: page.value, limit: meta.value.limit })
+    const response = await getProducts({
+      ...(selectedCategory.value ? { id_categoria: selectedCategory.value } : {}),
+      ...(query.value ? { q: query.value } : {}),
+      page: page.value,
+      limit: meta.value.limit,
+    })
     if (currentRequest !== requestId) return
     products.value = response.data
     meta.value = response.meta
@@ -38,11 +48,56 @@ async function loadProducts() {
     if (currentRequest === requestId) loading.value = false
   }
 }
-function submitSearch() { query.value = searchInput.value.trim(); page.value = 1 }
-function selectCategory(id) { selectedCategory.value = id; page.value = 1; router.push(id ? { path: '/', query: { category: id } } : { path: '/' }) }
+
+function submitSearch() {
+  query.value = searchInput.value.trim()
+  page.value = 1
+  syncRoute()
+}
+
+function selectCategory(id) {
+  const targetId = id ? String(id) : ''
+  if (selectedCategory.value === targetId && String(route.query.category || '') === targetId) return
+  selectedCategory.value = targetId
+  page.value = 1
+  syncRoute()
+}
+
+function syncRoute() {
+  const nextQuery = {}
+  if (selectedCategory.value) nextQuery.category = selectedCategory.value
+  if (query.value) nextQuery.q = query.value
+  router.push({ path: '/', query: nextQuery })
+}
+
 watch([selectedCategory, query, page], loadProducts)
-watch(() => route.query.category, (value) => { selectedCategory.value = value || ''; page.value = 1 })
-onMounted(async () => { await Promise.all([loadCategories(), loadProducts()]) })
+
+watch(
+  () => route.query.category,
+  (value) => {
+    const targetId = value ? String(value) : ''
+    if (selectedCategory.value !== targetId) {
+      selectedCategory.value = targetId
+      page.value = 1
+    }
+  }
+)
+
+watch(
+  () => route.query.q,
+  (value) => {
+    const targetQ = typeof value === 'string' ? value.trim() : ''
+    if (query.value !== targetQ) {
+      query.value = targetQ
+      searchInput.value = targetQ
+      page.value = 1
+    }
+  }
+)
+
+onMounted(async () => {
+  await Promise.all([loadCategories(), loadProducts()])
+})
 </script>
 
 <template>

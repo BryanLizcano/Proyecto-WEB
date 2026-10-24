@@ -4,13 +4,14 @@ const { findCategoryById } = require('./categoryService');
 const ApiError = require('../utils/apiError');
 
 async function getProducts({ id_categoria, q, page = 1, limit = 10 } = {}) {
+  const parsedCat = id_categoria ? parseInt(id_categoria, 10) : null;
   const numPage = parseInt(page, 10) || 1;
   const numLimit = parseInt(limit, 10) || 10;
   const offset = (numPage - 1) * numLimit;
 
   const [products, total] = await Promise.all([
-    productoModel.findAll({ idCategoria: id_categoria, q, limit: numLimit, offset }),
-    productoModel.countAll({ idCategoria: id_categoria, q }),
+    productoModel.findAll({ idCategoria: parsedCat, q, limit: numLimit, offset }),
+    productoModel.countAll({ idCategoria: parsedCat, q }),
   ]);
 
   const totalPages = Math.ceil(total / numLimit) || (total === 0 ? 0 : 1);

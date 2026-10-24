@@ -98,13 +98,14 @@ function validateProductoInput(req, res, next) {
 
 function validateProductQueryParams(req, res, next) {
   const { id_categoria, page, limit, q } = req.query;
+  const sanitizedQuery = { ...req.query };
 
   if (id_categoria !== undefined) {
     const parsedCat = parseInt(id_categoria, 10);
     if (!/^\d+$/.test(id_categoria) || Number.isNaN(parsedCat) || parsedCat <= 0) {
       return next(ApiError.badRequest('El parámetro id_categoria debe ser un número entero válido.'));
     }
-    req.query.id_categoria = parsedCat;
+    sanitizedQuery.id_categoria = parsedCat;
   }
 
   if (page !== undefined) {
@@ -112,7 +113,7 @@ function validateProductQueryParams(req, res, next) {
     if (!/^\d+$/.test(page) || Number.isNaN(parsedPage) || parsedPage < 1) {
       return next(ApiError.badRequest('El parámetro page debe ser un entero mayor o igual a 1.'));
     }
-    req.query.page = parsedPage;
+    sanitizedQuery.page = parsedPage;
   }
 
   if (limit !== undefined) {
@@ -120,12 +121,19 @@ function validateProductQueryParams(req, res, next) {
     if (!/^\d+$/.test(limit) || Number.isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 50) {
       return next(ApiError.badRequest('El parámetro limit debe ser un entero entre 1 y 50.'));
     }
-    req.query.limit = parsedLimit;
+    sanitizedQuery.limit = parsedLimit;
   }
 
   if (q !== undefined && typeof q === 'string') {
-    req.query.q = q.trim();
+    sanitizedQuery.q = q.trim();
   }
+
+  Object.defineProperty(req, 'query', {
+    value: sanitizedQuery,
+    writable: true,
+    configurable: true,
+    enumerable: true,
+  });
 
   return next();
 }

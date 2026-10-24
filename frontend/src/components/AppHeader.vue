@@ -29,6 +29,8 @@ onMounted(async () => {
       <nav class="main-nav" aria-label="Navegación principal">
         <RouterLink
           to="/"
+          active-class=""
+          exact-active-class=""
           :class="{ 'is-active': route.path === '/' && !route.query.category }"
         >
           Tienda
@@ -37,6 +39,8 @@ onMounted(async () => {
           v-for="category in categories"
           :key="category.id_categoria"
           :to="`/?category=${category.id_categoria}`"
+          active-class=""
+          exact-active-class=""
           :class="{ 'is-active': route.path === '/' && String(route.query.category) === String(category.id_categoria) }"
         >
           {{ category.nombre }}

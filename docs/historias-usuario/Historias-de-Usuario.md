@@ -139,7 +139,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 * **Criterios de Aceptación:**
   1. Al seleccionar una categoría, actualiza el listado y reinicia la paginación a la página 1.
   2. La URL (`/?category=X`) y el estado activo de los botones deben mantenerse sincronizados entre [`AppHeader.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/components/AppHeader.vue) y [`CatalogView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/CatalogView.vue).
-* **Estado:** 🟡 **En progreso** (Backend 100% listo; en Frontend falta sincronizar `selectCategory()` con `router.push` y corregir `.router-link-active` en `AppHeader.vue`).
+* **Estado:** ✅ **Completado** (Backend implementado en [`productRoutes.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/routes/productRoutes.js) con filtro `id_categoria`; Frontend sincronizado bidireccionalmente entre [`AppHeader.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/components/AppHeader.vue) y [`CatalogView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/CatalogView.vue) mediante `router.push`, URL reactiva `/?category=X`, reinicio a página 1 y clases activas sin conflicto).
 
 #### **HU-10: Buscar productos por nombre o palabras clave**
 * **Rol:** Cliente

@@ -25,8 +25,8 @@ describe('Endpoints de Productos (/api/v1/productos)', () => {
     jest.clearAllMocks();
   });
 
-  describe('GET /api/v1/productos', () => {
-    it('debe listar productos con paginaciÃ³n y cÃ³digo 200', async () => {
+  describe('GET /api/v1/productos (HU-08 / HU-09 / HU-10)', () => {
+    it('debe listar productos con paginación y código 200', async () => {
       const mockProducts = [
         {
           id_producto: 1,
@@ -54,6 +54,124 @@ describe('Endpoints de Productos (/api/v1/productos)', () => {
         limit: 10,
         totalPages: 1,
       });
+    });
+
+    it('HU-09: debe filtrar productos por categoría id_categoria y retornar 200', async () => {
+      const mockFilteredProducts = [
+        {
+          id_producto: 3,
+          id_categoria: 2,
+          categoria_nombre: 'Ropa Deportiva',
+          nombre: 'Camiseta Dry-Fit',
+          descripcion: 'Transpirable',
+          precio: 29.99,
+          stock: 40,
+          imagen_url: 'https://example.com/dryfit.jpg',
+        },
+      ];
+
+      query.mockImplementationOnce((sql, params) => {
+        expect(sql).toContain('p.id_categoria = $1');
+        expect(params).toContain(2);
+        return Promise.resolve({ rows: mockFilteredProducts });
+      });
+      query.mockImplementationOnce((sql, params) => {
+        expect(sql).toContain('p.id_categoria = $1');
+        expect(params).toContain(2);
+        return Promise.resolve({ rows: [{ total: 1 }] });
+      });
+
+      const res = await request(app).get('/api/v1/productos?id_categoria=2&page=1&limit=12');
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].id_categoria).toBe(2);
+      expect(res.body.meta.total).toBe(1);
+      expect(res.body.meta.page).toBe(1);
+      expect(res.body.meta.limit).toBe(12);
+    });
+
+    it('HU-09: debe retornar lista vacía y total 0 si no hay productos en la categoría especificada', async () => {
+      query.mockResolvedValueOnce({ rows: [] });
+      query.mockResolvedValueOnce({ rows: [{ total: 0 }] });
+
+      const res = await request(app).get('/api/v1/productos?id_categoria=99');
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.data).toEqual([]);
+      expect(res.body.meta).toEqual({
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+    });
+
+    it('HU-09: debe rechazar con 400 Bad Request si id_categoria no es numérico', async () => {
+      const res = await request(app).get('/api/v1/productos?id_categoria=calzado');
+
+      expect(res.status).toBe(400);
+      expect(res.body.status).toBe('error');
+      expect(res.body.code).toBe('BAD_REQUEST');
+      expect(res.body.message).toContain('id_categoria');
+    });
+
+    it('HU-09: debe rechazar con 400 Bad Request si id_categoria es menor o igual a cero', async () => {
+      const resZero = await request(app).get('/api/v1/productos?id_categoria=0');
+      expect(resZero.status).toBe(400);
+      expect(resZero.body.code).toBe('BAD_REQUEST');
+
+      const resNeg = await request(app).get('/api/v1/productos?id_categoria=-3');
+      expect(resNeg.status).toBe(400);
+      expect(resNeg.body.code).toBe('BAD_REQUEST');
+    });
+
+    it('HU-09 & HU-10: debe combinar exitosamente el filtro de categoría con búsqueda q y paginación', async () => {
+      const mockResult = [
+        {
+          id_producto: 5,
+          id_categoria: 1,
+          categoria_nombre: 'Calzado Deportivo',
+          nombre: 'Tenis Trail Runner',
+          descripcion: 'Zapatillas de montaña',
+          precio: 110.0,
+          stock: 12,
+          imagen_url: null,
+        },
+      ];
+
+      query.mockImplementationOnce((sql, params) => {
+        expect(sql).toContain('p.id_categoria = $1');
+        expect(sql).toContain('ILIKE $2');
+        expect(params).toEqual([1, '%trail%', 10, 0]);
+        return Promise.resolve({ rows: mockResult });
+      });
+      query.mockImplementationOnce((sql, params) => {
+        expect(sql).toContain('p.id_categoria = $1');
+        expect(sql).toContain('ILIKE $2');
+        expect(params).toEqual([1, '%trail%']);
+        return Promise.resolve({ rows: [{ total: 1 }] });
+      });
+
+      const res = await request(app).get('/api/v1/productos?id_categoria=1&q=trail&page=1&limit=10');
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('success');
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].nombre).toBe('Tenis Trail Runner');
+      expect(res.body.meta.total).toBe(1);
+    });
+
+    it('debe rechazar con 400 Bad Request si page o limit son inválidos', async () => {
+      const resPage = await request(app).get('/api/v1/productos?page=0');
+      expect(resPage.status).toBe(400);
+      expect(resPage.body.code).toBe('BAD_REQUEST');
+
+      const resLimit = await request(app).get('/api/v1/productos?limit=100');
+      expect(resLimit.status).toBe(400);
+      expect(resLimit.body.code).toBe('BAD_REQUEST');
     });
   });
 
