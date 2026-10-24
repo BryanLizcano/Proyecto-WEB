@@ -1,13 +1,17 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ShoppingBag, ShieldCheck } from '@lucide/vue'
+import { LogOut, ShieldCheck, ShoppingBag, User } from '@lucide/vue'
 import { useCartStore } from '../stores/cart'
+import { useAuthStore } from '../stores/auth'
 import { getCategories } from '../services/catalog'
+import AuthModal from './AuthModal.vue'
 
 const cart = useCartStore()
+const auth = useAuthStore()
 const route = useRoute()
 const categories = ref([])
+const showAuthModal = ref(false)
 
 onMounted(async () => {
   try {
@@ -15,6 +19,8 @@ onMounted(async () => {
   } catch (error) {
     categories.value = []
   }
+  // Verificar si hay sesión activa en cookie / storage
+  await auth.checkSession()
 })
 </script>
 
@@ -48,10 +54,46 @@ onMounted(async () => {
       </nav>
 
       <div class="header-actions">
-        <RouterLink class="admin-link" to="/admin/login" aria-label="Acceso administrador">
+        <!-- PESTAÑA ADMIN: SOLO SE REVELA SI ES ADMINISTRADOR -->
+        <RouterLink
+          v-if="auth.isAdmin"
+          class="admin-link is-admin-visible"
+          to="/admin"
+          aria-label="Panel de administración"
+        >
           <ShieldCheck :size="17" />
           <span>Admin</span>
         </RouterLink>
+
+        <!-- CAJA DE USUARIO LOGUEADO -->
+        <div v-if="auth.authenticated" class="user-session-box">
+          <span class="user-greeting" :title="auth.user?.email">
+            Hola, {{ auth.user?.nombre ? auth.user.nombre.split(' ')[0] : 'Usuario' }}
+          </span>
+          <button
+            class="logout-trigger"
+            type="button"
+            title="Cerrar sesión"
+            aria-label="Cerrar sesión"
+            @click="auth.logout()"
+          >
+            <LogOut :size="13" />
+          </button>
+        </div>
+
+        <!-- BOTÓN INGRESAR (CUANDO NO ESTÁ AUTENTICADO) -->
+        <button
+          v-else
+          class="auth-trigger"
+          type="button"
+          aria-label="Iniciar sesión o registrarse"
+          @click="showAuthModal = true"
+        >
+          <User :size="16" />
+          <span>Ingresar</span>
+        </button>
+
+        <!-- BOLSA DE COMPRAS -->
         <button class="cart-trigger" type="button" aria-label="Abrir carrito" @click="cart.isOpen = true">
           <ShoppingBag :size="19" />
           <span class="cart-label">Bolsa</span>
@@ -60,5 +102,69 @@ onMounted(async () => {
       </div>
     </div>
     <div class="header-rule"></div>
+
+    <AuthModal
+      :is-open="showAuthModal"
+      @close="showAuthModal = false"
+    />
   </header>
 </template>
+
+<style scoped>
+.auth-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  color: #777a71;
+  transition: color 0.15s;
+  padding: 4px 6px;
+}
+
+.auth-trigger:hover {
+  color: #20231f;
+}
+
+.user-session-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f4f3ee;
+  border: 1px solid #deded5;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.user-greeting {
+  color: #1e4a3d;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout-trigger {
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  color: #777a71;
+  cursor: pointer;
+  padding: 2px;
+  transition: color 0.15s;
+}
+
+.logout-trigger:hover {
+  color: #a83d32;
+}
+
+.is-admin-visible {
+  color: #1e4a3d !important;
+  font-weight: 800 !important;
+}
+</style>

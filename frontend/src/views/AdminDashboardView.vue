@@ -272,7 +272,7 @@ async function submitProduct() {
 
 async function signOut() {
   await auth.logout()
-  router.push('/admin/login')
+  router.push('/')
 }
 
 onMounted(loadDashboard)

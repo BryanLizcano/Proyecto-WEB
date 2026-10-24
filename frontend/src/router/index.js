@@ -7,6 +7,7 @@ const router = createRouter({
     { path: '/', name: 'catalog', component: () => import('../views/CatalogView.vue') },
     { path: '/productos/:id', name: 'product-detail', component: () => import('../views/ProductDetailView.vue') },
     { path: '/admin/login', name: 'admin-login', component: () => import('../views/AdminLoginView.vue') },
+    { path: '/admin', redirect: '/admin/dashboard' },
     { path: '/admin/dashboard', name: 'admin-dashboard', component: () => import('../views/AdminDashboardView.vue'), meta: { requiresAuth: true } },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('../views/NotFoundView.vue') },
   ],
@@ -16,8 +17,9 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth) return true
   const auth = useAuthStore()
-  if (await auth.checkSession()) return true
-  return { name: 'admin-login', query: { redirect: to.fullPath } }
+  const ok = await auth.checkSession()
+  if (ok && auth.isAdmin) return true
+  return { path: '/', query: { auth: 'required' } }
 })
 
 export default router
