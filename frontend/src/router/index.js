@@ -6,6 +6,7 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'catalog', component: () => import('../views/CatalogView.vue') },
     { path: '/productos/:id', name: 'product-detail', component: () => import('../views/ProductDetailView.vue') },
+    { path: '/mi-cuenta', name: 'client-account', component: () => import('../views/ClientAccountView.vue'), meta: { requiresClientAuth: true } },
     { path: '/admin/login', name: 'admin-login', component: () => import('../views/AdminLoginView.vue') },
     { path: '/admin', redirect: '/admin/dashboard' },
     { path: '/admin/dashboard', name: 'admin-dashboard', component: () => import('../views/AdminDashboardView.vue'), meta: { requiresAuth: true } },
@@ -15,11 +16,21 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  if (!to.meta.requiresAuth) return true
   const auth = useAuthStore()
-  const ok = await auth.checkSession()
-  if (ok && auth.isAdmin) return true
-  return { path: '/', query: { auth: 'required' } }
+
+  if (to.meta.requiresAuth) {
+    const ok = await auth.checkSession()
+    if (ok && auth.isAdmin) return true
+    return { path: '/', query: { auth: 'required' } }
+  }
+
+  if (to.meta.requiresClientAuth) {
+    const ok = await auth.checkSession()
+    if (ok && auth.authenticated) return true
+    return { path: '/', query: { auth: 'required' } }
+  }
+
+  return true
 })
 
 export default router

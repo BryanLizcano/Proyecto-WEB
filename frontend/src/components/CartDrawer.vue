@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { ArrowLeft, ArrowUpRight, CheckCircle2, Lock, Minus, Plus, ShoppingBag, Trash2, User, X } from '@lucide/vue'
+import { ArrowLeft, ArrowUpRight, CheckCircle2, Lock, Minus, PackageCheck, Plus, ShoppingBag, Trash2, User, X } from '@lucide/vue'
 import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '../stores/auth'
 import { formatCurrency } from '../utils/formatCurrency'
@@ -305,9 +305,19 @@ function handlePaymentSuccess(data) {
               <p class="confirmed-note">
                 Hemos recibido tu solicitud. Nuestro equipo comercial se comunicará contigo para despachar tus productos.
               </p>
-              <button class="button button-dark" type="button" @click="closeDrawer">
-                Seguir explorando
-              </button>
+              <div class="confirmed-actions">
+                <RouterLink
+                  to="/mi-cuenta"
+                  class="button button-accent confirmed-btn"
+                  @click="closeDrawer"
+                >
+                  <PackageCheck :size="15" />
+                  Ver estado en Mi Cuenta
+                </RouterLink>
+                <button class="button button-outline confirmed-btn" type="button" @click="closeDrawer">
+                  Seguir explorando
+                </button>
+              </div>
             </div>
           </template>
         </aside>
@@ -545,6 +555,23 @@ function handlePaymentSuccess(data) {
   font-size: 11px;
   color: #777a71;
   line-height: 1.45;
-  margin: 0 0 20px;
+  margin: 0 0 16px;
+}
+
+.confirmed-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.confirmed-btn {
+  width: 100%;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px;
+  font-size: 12px;
 }
 </style>

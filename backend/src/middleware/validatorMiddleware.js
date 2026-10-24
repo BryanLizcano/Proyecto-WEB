@@ -196,6 +196,48 @@ function validateRegisterInput(req, res, next) {
   return next();
 }
 
+function validateProfileUpdateInput(req, res, next) {
+  const { nombre, email, telefono, currentPassword, newPassword } = req.body || {};
+  const details = [];
+
+  if (!nombre || typeof nombre !== 'string' || validator.isEmpty(nombre.trim())) {
+    details.push({ field: 'nombre', message: 'El nombre es obligatorio.' });
+  } else if (!validator.isLength(nombre.trim(), { min: 1, max: 100 })) {
+    details.push({ field: 'nombre', message: 'El nombre no puede exceder 100 caracteres.' });
+  }
+
+  if (!email || typeof email !== 'string' || !validator.isEmail(email.trim())) {
+    details.push({ field: 'email', message: 'Debe ingresar un correo electrónico válido.' });
+  }
+
+  if (telefono !== undefined && telefono !== null && typeof telefono === 'string') {
+    if (telefono.trim().length > 50) {
+      details.push({ field: 'telefono', message: 'El teléfono no puede exceder 50 caracteres.' });
+    }
+  }
+
+  if (newPassword) {
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      details.push({ field: 'newPassword', message: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+    }
+    if (!currentPassword || typeof currentPassword !== 'string') {
+      details.push({ field: 'currentPassword', message: 'Debe suministrar su contraseña actual.' });
+    }
+  }
+
+  if (details.length > 0) {
+    return next(ApiError.unprocessable('Errores de validación en los campos del formulario.', details));
+  }
+
+  req.body.nombre = validator.escape(nombre.trim());
+  req.body.email = email.trim().toLowerCase();
+  req.body.telefono = (telefono && typeof telefono === 'string' && telefono.trim().length > 0)
+    ? validator.escape(telefono.trim())
+    : null;
+
+  return next();
+}
+
 function validateOrderInput(req, res, next) {
   const { nombre_cliente, contacto_cliente, items } = req.body || {};
   const details = [];
@@ -303,6 +345,7 @@ module.exports = {
   validateProductQueryParams,
   validateLoginInput,
   validateRegisterInput,
+  validateProfileUpdateInput,
   validateOrderInput,
   validateOrderStatusInput,
   validateOrderQueryParams,

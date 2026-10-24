@@ -67,9 +67,22 @@ onMounted(async () => {
 
         <!-- CAJA DE USUARIO LOGUEADO -->
         <div v-if="auth.authenticated" class="user-session-box">
-          <span class="user-greeting" :title="auth.user?.email">
-            Hola, {{ auth.user?.nombre ? auth.user.nombre.split(' ')[0] : 'Usuario' }}
+          <!-- ENLACE A MI CUENTA PARA CLIENTES -->
+          <RouterLink
+            v-if="!auth.isAdmin"
+            to="/mi-cuenta"
+            class="user-account-link"
+            title="Ir a Mi Cuenta (Mis pedidos y actualización de datos)"
+          >
+            <User :size="14" />
+            <span class="user-greeting">Mi cuenta ({{ auth.user?.nombre ? auth.user.nombre.split(' ')[0] : 'Cliente' }})</span>
+          </RouterLink>
+
+          <!-- INDICADOR PARA ADMINISTRADOR -->
+          <span v-else class="user-greeting">
+            Admin: {{ auth.user?.nombre ? auth.user.nombre.split(' ')[0] : 'Admin' }}
           </span>
+
           <button
             class="logout-trigger"
             type="button"
@@ -140,9 +153,23 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+.user-account-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #1e4a3d;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.user-account-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
 .user-greeting {
   color: #1e4a3d;
-  max-width: 120px;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
