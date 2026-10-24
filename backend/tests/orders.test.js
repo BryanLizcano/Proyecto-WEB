@@ -292,9 +292,78 @@ describe('Endpoints de Pedidos (/api/v1/pedidos)', () => {
         totalPages: 1,
       });
     });
+
+    it('debe rechazar con 400 si el filtro de estado no es un valor permitido', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .get('/api/v1/pedidos?estado=INVALIDO')
+        .set('Cookie', authCookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('BAD_REQUEST');
+    });
+
+    it('debe rechazar con 400 si page o limit son inválidos', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .get('/api/v1/pedidos?page=-5')
+        .set('Cookie', authCookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('BAD_REQUEST');
+    });
+
+    it('debe rechazar con 400 si limit excede 50 o no es numérico', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .get('/api/v1/pedidos?limit=100')
+        .set('Cookie', authCookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('BAD_REQUEST');
+    });
+
+    it('debe calcular totalPages en 0 cuando no hay registros de pedidos', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+      query.mockResolvedValueOnce({ rows: [{ total: 0 }] });
+      query.mockResolvedValueOnce({ rows: [] });
+
+      const res = await request(app)
+        .get('/api/v1/pedidos')
+        .set('Cookie', authCookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual([]);
+      expect(res.body.meta).toEqual({
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+    });
   });
 
   describe('GET /api/v1/pedidos/:id (HU-17: Detalle de pedido admin)', () => {
+    it('debe retornar 401 si no hay sesión de administrador activa', async () => {
+      const res = await request(app).get('/api/v1/pedidos/101');
+      expect(res.status).toBe(401);
+      expect(res.body.code).toBe('UNAUTHORIZED');
+    });
+
+    it('debe retornar 400 si el id no es un número entero válido', async () => {
+      query.mockResolvedValueOnce({ rows: [mockAdmin] });
+
+      const res = await request(app)
+        .get('/api/v1/pedidos/invalido')
+        .set('Cookie', authCookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('BAD_REQUEST');
+    });
+
     it('debe retornar 404 si el pedido no existe', async () => {
       query.mockResolvedValueOnce({ rows: [mockAdmin] }); // Auth check
       query.mockResolvedValueOnce({ rows: [] }); // No order found

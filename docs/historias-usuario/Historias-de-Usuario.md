@@ -38,7 +38,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
 | **HU-14** | Confirmar pedido (Checkout) y descontar stock en BD | EP-04 | RF-06 | S4 (Sem 13) | 8 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-15** | Iniciar y cerrar sesión como administrador | EP-05 | RF-05 | S4 (Sem 13) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-16** | Proteger operaciones mutables con token CSRF | EP-05 | RNF-03 | S5 (Sem 14) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
-| **HU-17** | Consultar historial y detalle de pedidos en el panel admin | EP-05 | RF-08 | S4 (Sem 13) | 5 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
+| **HU-17** | Consultar historial y detalle de pedidos en el panel admin | EP-05 | RF-08 | S4 (Sem 13) | 5 | `[x]` Hecho | `[x]` Hecho | **Completado** |
 | **HU-18** | Actualizar el estado operativo de un pedido | EP-05 | RF-08 | S4 (Sem 13) | 3 | `[ ]` Por hacer | `[ ]` Por hacer | **Por hacer** |
 
 ---
@@ -217,7 +217,7 @@ Las Historias de Usuario fueron desglosadas aplicando el principio **INVEST** a 
   1. `GET /api/v1/pedidos` requiere sesión admin y retorna los pedidos ordenados del más reciente al más antiguo (`ORDER BY fecha DESC`), permitiendo filtrar por `estado`.
   2. `GET /api/v1/pedidos/{id}` retorna los datos del cliente y el arreglo `detalles` con `nombre_producto`, `cantidad`, `precio_unitario` y `subtotal`.
   3. [`AdminDashboardView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminDashboardView.vue) incluye una pestaña *"Pedidos"* para explorar la tabla y abrir el detalle de cada orden.
-* **Estado:** ❌ **Por hacer** (Solo existen métodos parciales en [`pedidoModel.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/models/pedidoModel.js) y [`detallePedidoModel.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/models/detallePedidoModel.js); faltan servicios, controladores, rutas y UI en Frontend).
+* **Estado:** ✅ **Completado** (Backend implementado en [`orderRoutes.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/routes/orderRoutes.js) y [`orderService.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/src/services/orderService.js) protegido con `authMiddleware`; Frontend integrado en [`AdminDashboardView.vue`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/frontend/src/views/AdminDashboardView.vue) con pestaña Pedidos, filtros de estado y modal de detalle; validado en [`orders.test.js`](file:///c:/Users/elpeo/OneDrive/Documentos/Desarrollo%20Web/Proyecto%20WEB/backend/tests/orders.test.js)).
 
 #### **HU-18: Actualizar el estado operativo de un pedido**
 * **Rol:** Administrador

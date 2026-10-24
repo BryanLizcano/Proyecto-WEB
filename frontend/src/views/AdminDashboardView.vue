@@ -1,6 +1,18 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ArrowUpRight, LogOut, PackagePlus, Pencil, Plus, RefreshCw, Tags, Trash2 } from '@lucide/vue'
+import {
+  ArrowUpRight,
+  Eye,
+  LogOut,
+  PackagePlus,
+  Pencil,
+  Plus,
+  RefreshCw,
+  ShoppingBag,
+  Tags,
+  Trash2,
+  X,
+} from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { getApiError } from '../services/api'
 import {
@@ -13,6 +25,7 @@ import {
   updateCategory,
   updateProduct,
 } from '../services/catalog'
+import { getOrder, getOrders } from '../services/orders'
 import { useAuthStore } from '../stores/auth'
 import { formatCurrency } from '../utils/formatCurrency'
 
@@ -20,7 +33,12 @@ const auth = useAuthStore()
 const router = useRouter()
 const categories = ref([])
 const products = ref([])
+const orders = ref([])
 const activeTab = ref('products')
+const orderFilterStatus = ref('')
+const selectedOrder = ref(null)
+const loadingOrderDetail = ref(false)
+
 const notice = ref('')
 const errorMessage = ref('')
 const saving = ref(false)
@@ -36,11 +54,60 @@ const totalUnits = computed(() => products.value.reduce((sum, product) => sum + 
 async function loadDashboard() {
   errorMessage.value = ''
   try {
-    const [categoryData, productResponse] = await Promise.all([getCategories(), getProducts({ page: 1, limit: 50 })])
+    const [categoryData, productResponse, orderResponse] = await Promise.all([
+      getCategories(),
+      getProducts({ page: 1, limit: 50 }),
+      getOrders({ estado: orderFilterStatus.value || undefined, limit: 50 }),
+    ])
     categories.value = categoryData
     products.value = productResponse.data
-    if (!productForm.value.id_categoria && categories.value.length) productForm.value.id_categoria = String(categories.value[0].id_categoria)
-  } catch (error) { errorMessage.value = getApiError(error) }
+    orders.value = orderResponse.data
+    if (!productForm.value.id_categoria && categories.value.length) {
+      productForm.value.id_categoria = String(categories.value[0].id_categoria)
+    }
+  } catch (error) {
+    errorMessage.value = getApiError(error)
+  }
+}
+
+async function filterOrders(status) {
+  orderFilterStatus.value = status
+  errorMessage.value = ''
+  try {
+    const res = await getOrders({ estado: status || undefined, limit: 50 })
+    orders.value = res.data
+  } catch (error) {
+    errorMessage.value = getApiError(error)
+  }
+}
+
+async function openOrderDetail(order) {
+  errorMessage.value = ''
+  loadingOrderDetail.value = true
+  try {
+    const fullOrder = await getOrder(order.id_pedido)
+    selectedOrder.value = fullOrder
+  } catch (error) {
+    errorMessage.value = getApiError(error)
+  } finally {
+    loadingOrderDetail.value = false
+  }
+}
+
+function closeOrderDetail() {
+  selectedOrder.value = null
+}
+
+function formatOrderDate(dateStr) {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString('es-CO', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function startEditCategory(category) {
@@ -201,7 +268,8 @@ onMounted(loadDashboard)
       <div class="admin-stat"><span>Productos</span><strong>{{ products.length }}</strong></div>
       <div class="admin-stat"><span>Categorías</span><strong>{{ categories.length }}</strong></div>
       <div class="admin-stat"><span>Unidades</span><strong>{{ totalUnits }}</strong></div>
-      <div class="admin-stat">
+      <div class="admin-stat"><span>Pedidos</span><strong>{{ orders.length }}</strong></div>
+      <div class="admin-stat" style="border: 0;">
         <button class="button button-accent" type="button" @click="loadDashboard">
           <RefreshCw :size="16" /> Actualizar datos
         </button>
@@ -237,6 +305,16 @@ onMounted(loadDashboard)
           >
             Categorías
           </button>
+          <button
+            class="admin-tab"
+            :class="{ active: activeTab === 'orders' }"
+            role="tab"
+            :aria-selected="activeTab === 'orders'"
+            type="button"
+            @click="activeTab = 'orders'"
+          >
+            Pedidos
+          </button>
         </div>
 
         <div class="admin-workspace-actions">
@@ -250,7 +328,7 @@ onMounted(loadDashboard)
             {{ showProductForm ? 'Cerrar formulario' : 'Nuevo producto' }}
           </button>
           <button
-            v-else
+            v-else-if="activeTab === 'categories'"
             class="button button-accent"
             type="button"
             @click="editingCategory ? cancelCategoryForm() : (showCategoryForm = !showCategoryForm)"
@@ -261,6 +339,7 @@ onMounted(loadDashboard)
         </div>
       </div>
 
+      <!-- FORMULARIOS -->
       <form v-if="showProductForm && activeTab === 'products'" class="admin-form" @submit.prevent="submitProduct">
         <div class="form-heading">
           <h2>{{ editingProduct ? 'Editar producto' : 'Agregar producto' }}</h2>
@@ -324,6 +403,7 @@ onMounted(loadDashboard)
         </button>
       </form>
 
+      <!-- TABLA DE PRODUCTOS -->
       <div v-if="activeTab === 'products'" class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -370,7 +450,8 @@ onMounted(loadDashboard)
         </table>
       </div>
 
-      <div v-else class="category-list">
+      <!-- LISTA DE CATEGORÍAS -->
+      <div v-else-if="activeTab === 'categories'" class="category-list">
         <article v-for="category in categories" :key="category.id_categoria" class="category-row">
           <span>{{ String(category.id_categoria).padStart(2, '0') }}</span>
           <div>
@@ -401,6 +482,375 @@ onMounted(loadDashboard)
         </article>
         <p v-if="!categories.length" class="table-empty">No hay categorías para mostrar.</p>
       </div>
+
+      <!-- TABLA DE PEDIDOS (HU-17) -->
+      <div v-else-if="activeTab === 'orders'" class="orders-section">
+        <div class="orders-filter-bar">
+          <span class="filter-label">Filtrar por estado:</span>
+          <div class="filter-buttons">
+            <button
+              class="filter-pill"
+              :class="{ active: orderFilterStatus === '' }"
+              type="button"
+              @click="filterOrders('')"
+            >
+              Todos ({{ orders.length }})
+            </button>
+            <button
+              class="filter-pill"
+              :class="{ active: orderFilterStatus === 'PENDIENTE' }"
+              type="button"
+              @click="filterOrders('PENDIENTE')"
+            >
+              Pendiente
+            </button>
+            <button
+              class="filter-pill"
+              :class="{ active: orderFilterStatus === 'CONFIRMADO' }"
+              type="button"
+              @click="filterOrders('CONFIRMADO')"
+            >
+              Confirmado
+            </button>
+            <button
+              class="filter-pill"
+              :class="{ active: orderFilterStatus === 'EN_PREPARACION' }"
+              type="button"
+              @click="filterOrders('EN_PREPARACION')"
+            >
+              En preparación
+            </button>
+            <button
+              class="filter-pill"
+              :class="{ active: orderFilterStatus === 'COMPLETADO' }"
+              type="button"
+              @click="filterOrders('COMPLETADO')"
+            >
+              Completado
+            </button>
+            <button
+              class="filter-pill"
+              :class="{ active: orderFilterStatus === 'CANCELADO' }"
+              type="button"
+              @click="filterOrders('CANCELADO')"
+            >
+              Cancelado
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in orders" :key="order.id_pedido">
+                <td><strong>#{{ order.id_pedido }}</strong></td>
+                <td>{{ formatOrderDate(order.fecha) }}</td>
+                <td>{{ order.nombre_cliente }}</td>
+                <td>{{ order.contacto_cliente }}</td>
+                <td>{{ formatCurrency(order.total) }}</td>
+                <td>
+                  <span class="status-badge" :class="`status-${order.estado.toLowerCase()}`">
+                    {{ order.estado }}
+                  </span>
+                </td>
+                <td style="text-align: right;">
+                  <button
+                    class="text-button"
+                    type="button"
+                    title="Ver detalle del pedido"
+                    aria-label="Ver detalle del pedido"
+                    @click="openOrderDetail(order)"
+                  >
+                    <Eye :size="13" /> Ver detalle
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!orders.length">
+                <td colspan="7" class="table-empty">No hay pedidos registrados con el filtro seleccionado.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
+
+    <!-- MODAL DETALLE DE PEDIDO (HU-17) -->
+    <Teleport to="body">
+      <div v-if="selectedOrder" class="modal-layer" @click.self="closeOrderDetail">
+        <div class="order-modal" role="dialog" aria-modal="true" aria-labelledby="modal-order-title">
+          <div class="modal-header">
+            <div>
+              <p class="eyebrow">DETALLE DEL PEDIDO</p>
+              <h2 id="modal-order-title">Orden #{{ selectedOrder.id_pedido }}</h2>
+            </div>
+            <button class="icon-button" type="button" aria-label="Cerrar modal" @click="closeOrderDetail">
+              <X :size="18" />
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <div class="order-info-card">
+              <div class="order-info-col">
+                <span class="info-label">Cliente</span>
+                <strong>{{ selectedOrder.nombre_cliente }}</strong>
+              </div>
+              <div class="order-info-col">
+                <span class="info-label">Dato de contacto</span>
+                <span>{{ selectedOrder.contacto_cliente }}</span>
+              </div>
+              <div class="order-info-col">
+                <span class="info-label">Fecha y hora</span>
+                <span>{{ formatOrderDate(selectedOrder.fecha) }}</span>
+              </div>
+              <div class="order-info-col">
+                <span class="info-label">Estado actual</span>
+                <span class="status-badge" :class="`status-${selectedOrder.estado.toLowerCase()}`">
+                  {{ selectedOrder.estado }}
+                </span>
+              </div>
+            </div>
+
+            <h3 class="items-heading">Productos comprados</h3>
+            <table class="detail-items-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th style="text-align: center;">Cantidad</th>
+                  <th style="text-align: right;">Precio Unitario</th>
+                  <th style="text-align: right;">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in selectedOrder.detalles" :key="item.id_detalle">
+                  <td>{{ item.nombre_producto }}</td>
+                  <td style="text-align: center;">{{ item.cantidad }}</td>
+                  <td style="text-align: right;">{{ formatCurrency(item.precio_unitario) }}</td>
+                  <td style="text-align: right;">{{ formatCurrency(item.subtotal) }}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="3" style="text-align: right; font-weight: 800;">Total del pedido:</td>
+                  <td style="text-align: right; font-weight: 800; font-size: 15px; color: #1a4d2e;">
+                    {{ formatCurrency(selectedOrder.total) }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="modal-footer">
+            <button class="button button-outline" type="button" @click="closeOrderDetail">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
+
+<style scoped>
+.orders-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.orders-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #f7f6f1;
+  border: 1px solid #e2e1d7;
+}
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #727774;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-pill {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid #e2e1d7;
+  background: #ffffff;
+  color: #181f1b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-pill:hover {
+  border-color: #1a4d2e;
+}
+
+.filter-pill.active {
+  background: #1a4d2e;
+  color: #ffffff;
+  border-color: #1a4d2e;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.status-pendiente {
+  background: #fff8e6;
+  color: #b78103;
+  border: 1px solid #f2d07e;
+}
+
+.status-confirmado {
+  background: #e8f4fd;
+  color: #1765ad;
+  border: 1px solid #a8d5fc;
+}
+
+.status-en_preparacion {
+  background: #f0eafb;
+  color: #633eb5;
+  border: 1px solid #d1bff5;
+}
+
+.status-completado {
+  background: #e9f7ef;
+  color: #1e7e34;
+  border: 1px solid #a3e4d7;
+}
+
+.status-cancelado {
+  background: #fdeeee;
+  color: #dc3545;
+  border: 1px solid #f5c6cb;
+}
+
+/* MODAL DE DETALLE */
+.modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(24, 31, 27, 0.5);
+  padding: 20px;
+}
+
+.order-modal {
+  width: min(650px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid #e2e1d7;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e1d7;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.order-info-card {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 16px;
+  background: #f7f6f1;
+  border: 1px solid #e2e1d7;
+  font-size: 12px;
+}
+
+.order-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #727774;
+  text-transform: uppercase;
+}
+
+.items-heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #181f1b;
+}
+
+.detail-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.detail-items-table th,
+.detail-items-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e1d7;
+}
+
+.detail-items-table th {
+  background: #faf9f5;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #727774;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid #e2e1d7;
+  background: #faf9f5;
+}
+</style>
