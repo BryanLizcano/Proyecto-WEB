@@ -16,11 +16,13 @@ async function authMiddleware(req, res, next) {
     }
 
     // Refrescar cookie por 10 minutos de inactividad
+    const isProduction = env.nodeEnv === 'production' || !!process.env.RENDER;
     res.cookie('admin_session', String(admin.id_administrador), {
       signed: true,
       httpOnly: true,
-      sameSite: 'lax',
-      secure: env.nodeEnv === 'production',
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
+      ...(isProduction ? { partitioned: true } : {}),
       maxAge: 10 * 60 * 1000,
       path: '/',
     });

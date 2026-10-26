@@ -6,15 +6,23 @@ const env = require('../config/env');
 const ApiError = require('../utils/apiError');
 const { sendSuccess } = require('../utils/apiResponse');
 
+function getCookieOptions(custom = {}) {
+  const isProduction = env.nodeEnv === 'production' || !!process.env.RENDER;
+  return {
+    sameSite: isProduction ? 'none' : 'lax',
+    secure: isProduction,
+    path: '/',
+    ...(isProduction ? { partitioned: true } : {}),
+    ...custom,
+  };
+}
+
 function getCsrf(req, res) {
   const csrfToken = crypto.randomBytes(32).toString('hex');
 
-  res.cookie('XSRF-TOKEN', csrfToken, {
+  res.cookie('XSRF-TOKEN', csrfToken, getCookieOptions({
     httpOnly: false,
-    sameSite: 'lax',
-    secure: env.nodeEnv === 'production',
-    path: '/',
-  });
+  }));
 
   return res.json({ csrfToken });
 }
@@ -26,23 +34,17 @@ async function login(req, res, next) {
 
     if (user.rol === 'admin') {
       // Sesión de admin: 10 minutos de inactividad (sliding expiration)
-      res.cookie('admin_session', String(user.id_administrador), {
+      res.cookie('admin_session', String(user.id_administrador), getCookieOptions({
         signed: true,
         httpOnly: true,
-        sameSite: 'lax',
-        secure: env.nodeEnv === 'production',
         maxAge: 10 * 60 * 1000,
-        path: '/',
-      });
+      }));
     } else {
       // Sesión de cliente: cookie de sesión del navegador (persiste hasta que se cierre el navegador)
-      res.cookie('cliente_session', String(user.id_cliente), {
+      res.cookie('cliente_session', String(user.id_cliente), getCookieOptions({
         signed: true,
         httpOnly: true,
-        sameSite: 'lax',
-        secure: env.nodeEnv === 'production',
-        path: '/',
-      });
+      }));
     }
 
     return sendSuccess(res, user);
@@ -57,13 +59,10 @@ async function register(req, res, next) {
     const client = await authService.register({ nombre, email, password, telefono });
 
     // Iniciar sesión del cliente de inmediato tras registrarse
-    res.cookie('cliente_session', String(client.id_cliente), {
+    res.cookie('cliente_session', String(client.id_cliente), getCookieOptions({
       signed: true,
       httpOnly: true,
-      sameSite: 'lax',
-      secure: env.nodeEnv === 'production',
-      path: '/',
-    });
+    }));
 
     return sendSuccess(res, client, 201);
   } catch (error) {
@@ -78,14 +77,11 @@ async function getMe(req, res, next) {
       const admin = await administradorModel.findById(adminId);
       if (admin) {
         // Refrescar cookie para 10 minutos más de inactividad
-        res.cookie('admin_session', String(admin.id_administrador), {
+        res.cookie('admin_session', String(admin.id_administrador), getCookieOptions({
           signed: true,
           httpOnly: true,
-          sameSite: 'lax',
-          secure: env.nodeEnv === 'production',
           maxAge: 10 * 60 * 1000,
-          path: '/',
-        });
+        }));
 
         return sendSuccess(res, {
           id_administrador: admin.id_administrador,
@@ -119,19 +115,13 @@ async function getMe(req, res, next) {
 }
 
 function logout(req, res) {
-  res.clearCookie('admin_session', {
+  res.clearCookie('admin_session', getCookieOptions({
     httpOnly: true,
-    sameSite: 'lax',
-    secure: env.nodeEnv === 'production',
-    path: '/',
-  });
+  }));
 
-  res.clearCookie('cliente_session', {
+  res.clearCookie('cliente_session', getCookieOptions({
     httpOnly: true,
-    sameSite: 'lax',
-    secure: env.nodeEnv === 'production',
-    path: '/',
-  });
+  }));
 
   return res.json({
     status: 'success',
